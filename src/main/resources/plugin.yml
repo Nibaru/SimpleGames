@@ -1,0 +1,18 @@
+name: SimpleGames
+version: '${project.version}'
+main: games.twinhead.simplegames.SimpleGames
+api-version: 1.19
+prefix: SG
+authors: [ Nibaru ]
+description: This plugin adds simple games that can be played in a chest GUI
+
+commands:
+  play:
+    aliases: [game]
+    usage: /<command> [game] [player]
+    description: Player a selected game with a specified player
+  accept:
+    aliases: [ a ]
+    usage: /<command>
+    description: Accepts the most recent game invite
+  listgames:
