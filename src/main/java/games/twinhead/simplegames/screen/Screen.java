@@ -4,6 +4,8 @@ import org.bukkit.entity.Player;
 import org.ipvp.canvas.Menu;
 import org.jetbrains.annotations.NotNull;
 
+import java.util.Collection;
+
 public interface Screen {
 
     void display();
@@ -12,4 +14,6 @@ public interface Screen {
 
     @NotNull
     Menu getMenu();
+
+    Collection<Player> getViewers();
 }

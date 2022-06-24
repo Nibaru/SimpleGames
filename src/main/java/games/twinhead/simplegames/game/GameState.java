@@ -1,4 +1,4 @@
-package games.twinhead.simplegames.misc;
+package games.twinhead.simplegames.game;
 
 public enum GameState {
     PENDING,

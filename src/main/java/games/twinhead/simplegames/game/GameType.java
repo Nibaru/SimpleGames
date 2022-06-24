@@ -1,4 +1,4 @@
-package games.twinhead.simplegames.misc;
+package games.twinhead.simplegames.game;
 
 public enum GameType {
     TIC_TAC_TOE("Tic Tac Toe"),
@@ -7,6 +7,7 @@ public enum GameType {
 
 
     final String displayName;
+
     GameType(String displayName){
         this.displayName = displayName;
     }

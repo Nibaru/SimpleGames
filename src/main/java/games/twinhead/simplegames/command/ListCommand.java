@@ -1,7 +1,7 @@
 package games.twinhead.simplegames.command;
 
 import games.twinhead.simplegames.SimpleGames;
-import games.twinhead.simplegames.misc.Game;
+import games.twinhead.simplegames.game.Game;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandSender;
 import org.bukkit.command.TabExecutor;
@@ -14,8 +14,13 @@ public class ListCommand implements TabExecutor {
     @Override
     public boolean onCommand(@NotNull CommandSender sender, @NotNull Command command, @NotNull String label, @NotNull String[] args) {
 
+        sender.sendMessage("Active Games:");
         for (Game game: SimpleGames.getInstance().getGameManager().getActiveGames()) {
-            sender.sendMessage("Game: " + game.getHost() + " Vs. " + game.getChallenger() + " State: " + game.getState());
+            sender.sendMessage("    Game: " + game.getGameType() + " " +  game.getHost().getDisplayName() + " Vs. " + game.getChallenger().getDisplayName() + " State: " + game.getState());
+        }
+        sender.sendMessage("Pending Games:");
+        for (Game game: SimpleGames.getInstance().getGameManager().getPendingGames()) {
+            sender.sendMessage("    Game: " + game.getGameType() + " " +  game.getHost().getDisplayName() + " Vs. " + game.getChallenger().getDisplayName() + " State: " + game.getState());
         }
         return false;
     }

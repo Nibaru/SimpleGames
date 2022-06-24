@@ -15,4 +15,16 @@ commands:
     aliases: [ a ]
     usage: /<command>
     description: Accepts the most recent game invite
+  decline:
+    aliases: [ d ]
+    usage: /<command>
+    description: Declines the most recent game invite
+  reload:
+    aliases: []
+    usage: /<command>
+    description: Reloads the Simple Games config
+  settings:
+    aliases: [ ]
+    usage: /<command>
+    description: Opens the settings screen
   listgames:
