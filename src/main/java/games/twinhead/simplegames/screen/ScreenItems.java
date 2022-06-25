@@ -5,10 +5,13 @@ import games.twinhead.simplegames.game.GameState;
 import games.twinhead.simplegames.misc.Util;
 import org.bukkit.ChatColor;
 import org.bukkit.Material;
+import org.bukkit.enchantments.Enchantment;
 import org.bukkit.entity.Player;
+import org.bukkit.inventory.ItemFlag;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.inventory.meta.SkullMeta;
+import org.ipvp.canvas.slot.Slot;
 import org.ipvp.canvas.template.ItemStackTemplate;
 
 import java.util.ArrayList;
@@ -50,6 +53,10 @@ public class ScreenItems {
                     lore.add(ChatColor.GRAY + "   [ /Settings] to change your token   ");
                 }
                 lore.add("");
+
+                meta.addEnchant(Enchantment.LUCK, 1, false);
+                meta.addItemFlags(ItemFlag.HIDE_ENCHANTS);
+
                 meta.setLore(lore);
                 item.setItemMeta(meta);
             }
@@ -76,7 +83,6 @@ public class ScreenItems {
 
             lore.add("");
 
-
             meta.setLore(lore);
             item.setItemMeta(meta);
             return item;
@@ -93,13 +99,13 @@ public class ScreenItems {
             meta.setDisplayName(" ");
 
             if(game.getCurrentTurn() == player && side == player){
-                item = new ItemStack(Material.GREEN_STAINED_GLASS_PANE);
+                item = new ItemStack(Material.LIME_STAINED_GLASS_PANE);
                 lore.add(ChatColor.WHITE + "   Your Turn   ");
             } else {
                 lore.add(ChatColor.GRAY +"   "+ game.getOpponent(player).getDisplayName() + "'s turn.   ");
             }
 
-            if(game.getState().equals(GameState.COMPLETED)){
+            if(game.getState().equals(GameState.COMPLETED) && !game.getState().equals(GameState.DRAW)){
                 lore.clear();
                 lore.add(ChatColor.YELLOW + "   " + game.getWinner().getDisplayName() + " has won!   ");
                 if(player == game.getWinner()){
@@ -107,6 +113,10 @@ public class ScreenItems {
                 } else {
                     item = new ItemStack(Material.RED_STAINED_GLASS_PANE);
                 }
+            } else if(game.getState().equals(GameState.DRAW)){
+                lore.clear();
+                lore.add(ChatColor.YELLOW + "   Draw!   ");
+                item = new ItemStack(Material.PURPLE_STAINED_GLASS_PANE);
             }
 
             lore.add("");
@@ -116,6 +126,30 @@ public class ScreenItems {
             item.setItemMeta(meta);
             return item;
         };
+    }
+
+    public static void enchantSlot(Slot slot, Player player){
+        ItemStack item = slot.getItem(player);
+        ItemMeta meta = item.getItemMeta();
+        meta.addEnchant(Enchantment.LUCK, 1, false);
+        meta.addItemFlags(ItemFlag.HIDE_ENCHANTS);
+        item.setItemMeta(meta);
+        slot.setItem(item);
+    }
+
+    public static void unEnchantSlot(Slot slot, Player player){
+        ItemStack item = slot.getItem(player);
+        ItemMeta meta = item.getItemMeta();
+        meta.removeEnchant(Enchantment.LUCK);
+        meta.addItemFlags(ItemFlag.HIDE_ENCHANTS);
+        item.setItemMeta(meta);
+        slot.setItem(item);
+    }
+
+    public static void enchantSlots(Slot[] slots, Player player){
+        for (Slot slot: slots) {
+            ScreenItems.enchantSlot(slot, player);
+        }
     }
 
 

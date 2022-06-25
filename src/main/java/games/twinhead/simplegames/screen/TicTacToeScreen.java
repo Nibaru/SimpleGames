@@ -4,6 +4,7 @@ import games.twinhead.simplegames.SimpleGames;
 import games.twinhead.simplegames.game.Game;
 import games.twinhead.simplegames.game.GameState;
 import games.twinhead.simplegames.settings.Setting;
+import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.Material;
 import org.bukkit.entity.Player;
@@ -13,6 +14,7 @@ import org.bukkit.inventory.meta.SkullMeta;
 import org.ipvp.canvas.Menu;
 import org.ipvp.canvas.mask.Mask;
 import org.ipvp.canvas.mask.RecipeMask;
+import org.ipvp.canvas.slot.Slot;
 import org.ipvp.canvas.template.ItemStackTemplate;
 import org.ipvp.canvas.type.ChestMenu;
 import org.jetbrains.annotations.NotNull;
@@ -31,10 +33,12 @@ public class TicTacToeScreen implements Screen{
 
     private final Game game;
 
+    private Slot[] winningRow = new Slot[3];
+
     private final int[][] boardSlots = {
-            {10, 11, 12},
-            {19, 20, 21},
-            {28, 29, 30}};
+            {12, 13, 14},
+            {21, 22, 23},
+            {30, 31, 32}};
 
     private final Material[][] board = {
             {boardMat, boardMat, boardMat},
@@ -58,14 +62,6 @@ public class TicTacToeScreen implements Screen{
     public void display() {
         drawScreen();
 
-        menu.getSlot(2, 6).setItemTemplate(ScreenItems.playerItem(host, ChatColor.AQUA + "Host - "));
-        menu.getSlot(2, 8).setItemTemplate(ScreenItems.playerItem(challenger, ChatColor.AQUA + "Challenger - "));
-
-        menu.getSlot(5, 3).setItemTemplate(ScreenItems.playerItem(game.getCurrentTurn(), ChatColor.AQUA + "Current Turn - "));
-
-        menu.getSlot(3, 6).setItemTemplate(boardItem(game.getHostMaterial()));
-        menu.getSlot(3, 8).setItemTemplate(boardItem(game.getChallengerMaterial()));
-
         clickHandler();
 
         display(host);
@@ -81,14 +77,21 @@ public class TicTacToeScreen implements Screen{
                     }
                     if(game.getCurrentTurn() == player)
                         if(clickInformation.getClickedSlot().getItem(player).getType().equals(boardMat)) {
+
                             updateBoard(num, player);
+
                             if(checkForWinner()) {
-                                menu.getSlot(4, 7).setItem(ScreenItems.simpleItem(Material.DIAMOND, "Winner " + game.getCurrentTurn().getDisplayName(), null).getItem(player));
                                 game.setState(GameState.COMPLETED);
-                                SimpleGames.getInstance().getGameManager().removeGame(game);
+                                ScreenItems.enchantSlots(winningRow, game.getHost());
+                                game.setWinner(game.getCurrentTurn());
+                            } else if (checkForDraw()) {
+                                game.setState(GameState.DRAW);
+
                             } else {
                                 game.setState(GameState.PLAYING);
                             }
+                            drawBoard();
+                            drawTurnIndicator();
                         }
                 }));
             }
@@ -97,20 +100,22 @@ public class TicTacToeScreen implements Screen{
 
     private void drawScreen(){
         Mask mask = RecipeMask.builder(menu)
-                .item('b', ScreenItems.simpleItem(Material.AIR, " ", new ArrayList<>()))
-                .item('T', turnIndicator())
+                .item('T', ScreenItems.turnIndicator(host, game))
                 .item('0', ScreenItems.simpleItem(Material.AIR, " ", new ArrayList<>()))
                 .item('H', ScreenItems.tokenDisplayItem(game.getHostMaterial(), game.getHost()))
+                .item('h', ScreenItems.playerItem(host, ChatColor.AQUA + "Host - "))
                 .item('C', ScreenItems.tokenDisplayItem(game.getChallengerMaterial(), game.getChallenger()))
-                .pattern("bbbbbbbbb")
-                .pattern("b000b000b")
-                .pattern("b000bH0Cb")
-                .pattern("b000b000b")
-                .pattern("bbbbb000b")
-                .pattern("TTTTTTTTT").build();
+                .item('c', ScreenItems.playerItem(challenger, ChatColor.AQUA + "Challenger - "))
+                .pattern("000000000")
+                .pattern("000000000")
+                .pattern("000000000")
+                .pattern("000000000")
+                .pattern("h0000000c")
+                .pattern("H0000000C").build();
         mask.apply(menu);
 
         drawBoard();
+        drawTurnIndicator();
     }
 
     private void drawBoard(){
@@ -125,20 +130,24 @@ public class TicTacToeScreen implements Screen{
     private ItemStackTemplate boardItem(){
         return player -> {
             ItemStack item = new ItemStack(boardMat);
-            ItemMeta meta = item.getItemMeta();
             List<String> lore = new ArrayList<>();
-            if(checkForWinner()){
-                item = new ItemStack(Material.LIGHT_GRAY_STAINED_GLASS_PANE);
-                meta.setDisplayName("Winner " + game.getCurrentTurn().getDisplayName());
+
+            if(game.getState().equals(GameState.COMPLETED)){
+                lore.add(ChatColor.GOLD + "   Winner " + game.getWinner().getDisplayName() + "!   ");
+            } else if (game.getState().equals(GameState.DRAW)) {
+                lore.add(ChatColor.GOLD + "   Draw!   ");
             } else {
                 if(player.equals(game.getCurrentTurn())){
-                    meta.setDisplayName("Your Turn");
-                    lore.add(ChatColor.GRAY + "Click to play here");
+                    lore.add(ChatColor.GOLD + "   Your Turn   ");
+                    lore.add(ChatColor.GRAY + "   Click to play here   ");
                 } else {
-                    meta.setDisplayName("Opponents Turn");
+                    lore.add(ChatColor.GRAY + "   " + game.getOpponent(player).getDisplayName() + "'s Turn   ");
                 }
             }
 
+            ItemMeta meta = item.getItemMeta();
+            meta.setDisplayName(" ");
+            lore.add("");
             meta.setLore(lore);
             item.setItemMeta(meta);
             return item;
@@ -154,50 +163,59 @@ public class TicTacToeScreen implements Screen{
     private void updateBoard(int num, Player player){
         Material mat = getMaterial(player);
 
-        num = num + 2;
-
         switch (num){
-            case 10 -> board[0][0] = mat;
-            case 11 -> board[0][1] = mat;
-            case 12 -> board[0][2] = mat;
-            case 19 -> board[1][0] = mat;
-            case 20 -> board[1][1] = mat;
-            case 21 -> board[1][2] = mat;
-            case 28 -> board[2][0] = mat;
-            case 29 -> board[2][1] = mat;
-            case 30 -> board[2][2] = mat;
+            case 12 -> board[0][0] = mat;
+            case 13 -> board[0][1] = mat;
+            case 14 -> board[0][2] = mat;
+            case 21 -> board[1][0] = mat;
+            case 22 -> board[1][1] = mat;
+            case 23 -> board[1][2] = mat;
+            case 30 -> board[2][0] = mat;
+            case 31 -> board[2][1] = mat;
+            case 32 -> board[2][2] = mat;
         }
 
         if(!checkForWinner()) game.changeTurn();
-        menu.getSlot(5, 3).setItemTemplate(ScreenItems.playerItem(game.getCurrentTurn(), ChatColor.AQUA + "Current Turn - "));
-
-        menu.getSlot(num).setItemTemplate(boardItem(mat));
-
-        for (int i = 1; i <= 9; i++) {
-            menu.getSlot(6, i).setItemTemplate(turnIndicator());
-        }
-        drawBoard();
+        menu.getSlot(num).setItemTemplate(TokenItem(mat));
     }
 
-    private ItemStackTemplate boardItem(Material material){
+    private void drawTurnIndicator(){
+        for (int i = 1; i <= 4; i++) {
+            menu.getSlot(i, 1).setItemTemplate(ScreenItems.turnIndicator(game.getHost(), game));
+            menu.getSlot(i, 9).setItemTemplate(ScreenItems.turnIndicator(game.getChallenger(), game));
+        }
+    }
+
+    private ItemStackTemplate TokenItem(Material material){
         return player -> {
             ItemStack item = new ItemStack(material);
             ItemMeta meta = item.getItemMeta();
             List<String> lore = new ArrayList<>();
+
+            meta.setDisplayName(" ");
+
             if(material == game.getHostMaterial()){
-                meta.setDisplayName(ChatColor.WHITE + "X");
-                if(player == host) lore.add(ChatColor.GRAY + host.getDisplayName() + " You");
-                else lore.add(ChatColor.GRAY +  host.getDisplayName());
+                if(player == host){
+                    lore.add(ChatColor.GRAY + "   " + host.getDisplayName() + " (You)   ");
+                } else{
+                    lore.add(ChatColor.GRAY + "   " +  host.getDisplayName()+ "   ");
+                }
             } else {
-                if(player != host) lore.add(ChatColor.GRAY + challenger.getDisplayName() + " You");
-                else lore.add(ChatColor.GRAY + challenger.getDisplayName());
-                meta.setDisplayName(ChatColor.WHITE + "O");
+                if(player != host){
+                    lore.add(ChatColor.GRAY + "   " + challenger.getDisplayName() + " (You)   ");
+                } else{
+                    lore.add(ChatColor.GRAY + "   " +  challenger.getDisplayName()+ "   ");
+                }
             }
+
+            lore.add("");
             meta.setLore(lore);
             item.setItemMeta(meta);
             return item;
         };
     }
+
+
     
     private boolean checkForDraw(){
         if(!checkForWinner()){
@@ -212,43 +230,63 @@ public class TicTacToeScreen implements Screen{
 
     private boolean checkForWinner(){
         for (int i = 0; i < 3; i++) {
-            if(board[i][0] == game.getHostMaterial() && board[i][1]  == game.getHostMaterial() && board[i][2]  == game.getHostMaterial())return true;
-            if(board[i][0] == game.getChallengerMaterial() && board[i][1]  == game.getChallengerMaterial() && board[i][2]  == game.getChallengerMaterial()) return true;
-            if(board[0][i] == game.getHostMaterial() && board[1][i]  == game.getHostMaterial() && board[2][i]  == game.getHostMaterial())return true;
-            if(board[0][i] == game.getChallengerMaterial() && board[1][i]  == game.getChallengerMaterial() && board[2][i]  == game.getChallengerMaterial())return true;
-        }
-        if(board[0][0] == game.getHostMaterial() && board[1][1]  == game.getHostMaterial() && board[2][2]  == game.getHostMaterial())return true;
-        if(board[2][0] == game.getHostMaterial() && board[1][1]  == game.getHostMaterial() && board[0][2]  == game.getHostMaterial())return true;
-
-        if(board[0][0] == game.getChallengerMaterial() && board[1][1]  == game.getChallengerMaterial() && board[2][2]  == game.getChallengerMaterial())return true;
-        if(board[2][0] == game.getChallengerMaterial() && board[1][1]  == game.getChallengerMaterial() && board[0][2]  == game.getChallengerMaterial())return true;
-        return false;
-    }
-
-    private ItemStackTemplate turnIndicator(){
-        return player -> {
-            ItemStack item = new ItemStack(Material.GRAY_STAINED_GLASS_PANE);
-            ItemMeta meta = item.getItemMeta();
-            if(checkForWinner()){
-                item = new ItemStack(Material.CYAN_STAINED_GLASS_PANE);
-                meta.setDisplayName(ChatColor.GREEN + "Winner " + game.getCurrentTurn().getDisplayName() +"!");
-            } else if (checkForDraw()) {
-                item = new ItemStack(Material.PURPLE_STAINED_GLASS_PANE);
-                meta.setDisplayName(ChatColor.DARK_PURPLE + "Draw!");
-            } else {
-                if(player.equals(game.getCurrentTurn())){
-                    item = new ItemStack(Material.GREEN_STAINED_GLASS_PANE);
-                    meta.setDisplayName("Your Turn");
-                } else {
-                    item = new ItemStack(Material.RED_STAINED_GLASS_PANE);
-                    meta.setDisplayName("Opponents Turn");
-                }
+            if(board[i][0] == game.getHostMaterial() && board[i][1]  == game.getHostMaterial() && board[i][2]  == game.getHostMaterial()){
+                winningRow[0] = getMenu().getSlot(boardSlots[i][0]);
+                winningRow[1] = getMenu().getSlot(boardSlots[i][1]);
+                winningRow[2] = getMenu().getSlot(boardSlots[i][2]);
+                return true;
             }
 
+            if(board[i][0] == game.getChallengerMaterial() && board[i][1]  == game.getChallengerMaterial() && board[i][2]  == game.getChallengerMaterial()){
+                winningRow[0] = getMenu().getSlot(boardSlots[i][0]);
+                winningRow[1] = getMenu().getSlot(boardSlots[i][1]);
+                winningRow[2] = getMenu().getSlot(boardSlots[i][2]);
+                return true;
+            }
 
-            item.setItemMeta(meta);
-            return item;
-        };
+            if(board[0][i] == game.getHostMaterial() && board[1][i]  == game.getHostMaterial() && board[2][i]  == game.getHostMaterial()){
+                winningRow[0] = getMenu().getSlot(boardSlots[0][i]);
+                winningRow[1] = getMenu().getSlot(boardSlots[1][i]);
+                winningRow[2] = getMenu().getSlot(boardSlots[2][i]);
+                return true;
+            }
+
+            if(board[0][i] == game.getChallengerMaterial() && board[1][i]  == game.getChallengerMaterial() && board[2][i]  == game.getChallengerMaterial()){
+                winningRow[0] = getMenu().getSlot(boardSlots[0][i]);
+                winningRow[1] = getMenu().getSlot(boardSlots[1][i]);
+                winningRow[2] = getMenu().getSlot(boardSlots[2][i]);
+                return true;
+            }
+
+        }
+        if(board[0][0] == game.getHostMaterial() && board[1][1]  == game.getHostMaterial() && board[2][2]  == game.getHostMaterial()){
+            winningRow[0] = getMenu().getSlot(boardSlots[0][0]);
+            winningRow[1] = getMenu().getSlot(boardSlots[1][1]);
+            winningRow[2] = getMenu().getSlot(boardSlots[2][2]);
+            return true;
+        }
+        if(board[2][0] == game.getHostMaterial() && board[1][1]  == game.getHostMaterial() && board[0][2]  == game.getHostMaterial()){
+            winningRow[0] = getMenu().getSlot(boardSlots[2][0]);
+            winningRow[1] = getMenu().getSlot(boardSlots[1][1]);
+            winningRow[2] = getMenu().getSlot(boardSlots[0][2]);
+            return true;
+        }
+
+        if(board[0][0] == game.getChallengerMaterial() && board[1][1]  == game.getChallengerMaterial() && board[2][2]  == game.getChallengerMaterial()){
+            winningRow[0] = getMenu().getSlot(boardSlots[0][0]);
+            winningRow[1] = getMenu().getSlot(boardSlots[1][1]);
+            winningRow[2] = getMenu().getSlot(boardSlots[2][2]);
+            return true;
+        }
+
+        if(board[2][0] == game.getChallengerMaterial() && board[1][1]  == game.getChallengerMaterial() && board[0][2]  == game.getChallengerMaterial()){
+            winningRow[0] = getMenu().getSlot(boardSlots[2][0]);
+            winningRow[1] = getMenu().getSlot(boardSlots[1][1]);
+            winningRow[2] = getMenu().getSlot(boardSlots[0][2]);
+            return true;
+        }
+
+        return false;
     }
 
     @Override

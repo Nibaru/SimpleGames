@@ -5,5 +5,6 @@ public enum GameState {
     STARTING,
     PLAYING,
     DECLINED,
-    COMPLETED;
+    COMPLETED,
+    DRAW;
 }

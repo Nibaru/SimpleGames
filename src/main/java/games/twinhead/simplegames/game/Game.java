@@ -131,7 +131,10 @@ public class Game {
     }
 
     public void setState(GameState state){
-        if(this.state != GameState.COMPLETED && state == GameState.COMPLETED) winEvent();
+        if(this.state != GameState.COMPLETED && state == GameState.COMPLETED) {
+            winEvent();
+            this.currentTurn = null;
+        }
         this.state = state;
 
     }

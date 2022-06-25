@@ -40,13 +40,14 @@ public class ConnectFourScreen implements Screen{
             {0,0,0,0,0,0,0},
     };
 
+    private int[] lastSlotPlayed = new int[2];
+
 
 
     public ConnectFourScreen(Game game){
         menu = ChestMenu.builder(6)
                 .title(game.getGameType().getDisplayName())
                 .build();
-
         this.game = game;
     }
 
@@ -82,10 +83,10 @@ public class ConnectFourScreen implements Screen{
             for (int row = 0; row < 6; row++)
                 if(this.board[row][col] == player && this.board[row][col+1] == player && this.board[row][col+2] == player && this.board[row][col+3] == player){
                     col++;
-                    this.winningRow[0] = menu.getSlot(row, col);
-                    this.winningRow[1] = menu.getSlot(row, col+1);
-                    this.winningRow[2] = menu.getSlot(row, col+2);
-                    this.winningRow[3] = menu.getSlot(row, col+3);
+                    this.winningRow[0] = menu.getSlot(row+1, col + 1);
+                    this.winningRow[1] = menu.getSlot(row+1, col+1 + 1);
+                    this.winningRow[2] = menu.getSlot(row+1, col+2 + 1);
+                    this.winningRow[3] = menu.getSlot(row+1, col+3 + 1);
                     return true;
                 }
 
@@ -95,10 +96,10 @@ public class ConnectFourScreen implements Screen{
             for (int row = 0; row < 6-3; row++)
                 if(this.board[row][col] == player && this.board[row+1][col] == player && this.board[row+2][col] == player && this.board[row+3][col] == player){
                     col++;
-                    this.winningRow[0] = menu.getSlot(row, col);
-                    this.winningRow[1] = menu.getSlot(row+1, col);
-                    this.winningRow[2] = menu.getSlot(row+2, col);
-                    this.winningRow[3] = menu.getSlot(row+3, col);
+                    this.winningRow[0] = menu.getSlot(row+1, col + 1);
+                    this.winningRow[1] = menu.getSlot(row+1 + 1, col + 1);
+                    this.winningRow[2] = menu.getSlot(row+2 + 1, col + 1);
+                    this.winningRow[3] = menu.getSlot(row+3 + 1, col + 1);
                     return true;
                 }
 
@@ -108,10 +109,10 @@ public class ConnectFourScreen implements Screen{
             for (int row=3; row < 6; row++){
                 if (this.board[row][col] == player && this.board[row-1][col+1] == player && this.board[row-2][col+2] == player && this.board[row-3][col+3] == player){
                     col++;
-                    this.winningRow[0] = menu.getSlot(row, col);
-                    this.winningRow[1] = menu.getSlot(row-1, col+1);
-                    this.winningRow[2] = menu.getSlot(row-2, col+2);
-                    this.winningRow[3] = menu.getSlot(row-3, col+3);
+                    this.winningRow[0] = menu.getSlot(row + 1, col + 1);
+                    this.winningRow[1] = menu.getSlot(row-1 + 1, col+1 + 1);
+                    this.winningRow[2] = menu.getSlot(row-2 + 1, col+2 + 1);
+                    this.winningRow[3] = menu.getSlot(row-3 + 1, col+3 + 1);
                     return true;
                 }
             }
@@ -121,10 +122,10 @@ public class ConnectFourScreen implements Screen{
             for (int col=3; col< 7; col++){
                 if (this.board[row][col] == player && this.board[row-1][col-1] == player && this.board[row-2][col-2] == player && this.board[row-3][col-3] == player){
                     col++;
-                    this.winningRow[0] = menu.getSlot(row, col);
-                    this.winningRow[1] = menu.getSlot(row-1, col-1);
-                    this.winningRow[2] = menu.getSlot(row-2, col-2);
-                    this.winningRow[3] = menu.getSlot(row-3, col-3);
+                    this.winningRow[0] = menu.getSlot(row + 1, col + 1);
+                    this.winningRow[1] = menu.getSlot(row-1 + 1, col-1 + 1);
+                    this.winningRow[2] = menu.getSlot(row-2 + 1, col-2 + 1);
+                    this.winningRow[3] = menu.getSlot(row-3 + 1, col-3 + 1);
                     return true;
                 }
             }
@@ -175,43 +176,55 @@ public class ConnectFourScreen implements Screen{
         };
     }
 
+    private Boolean checkForDraw(){
+        for(int[] row: board){
+            for(int slot: row){
+                if(slot == 0) return false;
+            }
+        }
+        if(winCheck()) return false;
+        return true;
+    }
+
 
     private void handler(int row, int col){
         menu.getSlot(row + 1, col + 2).setClickHandler((player, info) ->{
             if(game.getCurrentTurn() != player) return;
+            if(game.getState().equals(GameState.DRAW) || game.getState().equals(GameState.COMPLETED)) return;
 
-            if (!checkForWinner(1) && !checkForWinner(2)) {
-                game.setState(GameState.PLAYING);
-                if(game.getHost() == player){
-                    board[lowestRow(col)][col] = 1;
-                } else if (game.getChallenger() == player) {
-                    board[lowestRow(col)][col] = 2;
-                }
-
+            game.setState(GameState.PLAYING);
+            if(game.getHost() == player){
+                board[lowestRow(col)][col] = 1;
+            } else if (game.getChallenger() == player) {
+                board[lowestRow(col)][col] = 2;
             }
+
 
             if (winCheck()) {
-                enchantWinningRow();
+                ScreenItems.enchantSlots(winningRow, game.getHost());
+            }else if(checkForDraw()){
+                game.setState(GameState.DRAW);
                 drawBoard();
-                return;
+            }else {
+                game.changeTurn();
             }
 
-            game.changeTurn();
+
+            lastSlotPlayed[0] = lowestRow(col);
+            lastSlotPlayed[1] = col + 2;
+
             drawBoard();
+            enchantLastToken(info.getClickedSlot());
+
         });
     }
 
-    private void enchantWinningRow(){
-        for (Slot slot: winningRow) {
-            Bukkit.broadcastMessage(Arrays.toString(winningRow));
 
-            ItemStack item = slot.getItem(game.getHost());
-            ItemMeta meta = item.getItemMeta();
-            meta.addEnchant(Enchantment.LUCK, 1, false);
-            //meta.addItemFlags(ItemFlag.HIDE_ENCHANTS);
-            item.setItemMeta(meta);
-            slot.setItem(item);
-        }
+
+    private void enchantLastToken(Slot newSlot){
+        Slot slot = menu.getSlot(lastSlotPlayed[0], lastSlotPlayed[1]);
+        ScreenItems.unEnchantSlot(slot, game.getHost());
+        ScreenItems.enchantSlot(menu.getSlot(lastSlotPlayed[0] + 2, lastSlotPlayed[1]), game.getHost());
     }
 
     public Boolean winCheck(){

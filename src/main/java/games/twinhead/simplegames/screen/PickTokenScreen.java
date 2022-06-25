@@ -1,6 +1,7 @@
 package games.twinhead.simplegames.screen;
 
 import games.twinhead.simplegames.SimpleGames;
+import games.twinhead.simplegames.misc.Util;
 import games.twinhead.simplegames.settings.PlayerSettings;
 import games.twinhead.simplegames.settings.Setting;
 import org.bukkit.ChatColor;
@@ -8,7 +9,6 @@ import org.bukkit.Material;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
-import org.checkerframework.checker.units.qual.A;
 import org.ipvp.canvas.Menu;
 import org.ipvp.canvas.mask.BinaryMask;
 import org.ipvp.canvas.mask.Mask;
@@ -44,14 +44,15 @@ public class PickTokenScreen implements Screen{
 
     @Override
     public void display() {
-        Menu.Builder<ChestMenu.Builder> pageTemplate = ChestMenu.builder(6).title(ChatColor.LIGHT_PURPLE + "Pick a token");
+        Menu.Builder<ChestMenu.Builder> pageTemplate = ChestMenu.builder(6).title(ChatColor.LIGHT_PURPLE + "Pick a " + Util.formatString(setting.toString()));
 
         Mask itemSlots = BinaryMask.builder(pageTemplate.getDimensions())
-                .pattern("011111110")
-                .pattern("011111110")
-                .pattern("011111110")
-                .pattern("011111110")
-                .pattern("011111110").build();
+                .pattern("111111111")
+                .pattern("111111111")
+                .pattern("111111111")
+                .pattern("111111111")
+                .pattern("111111111")
+                .pattern("000000000").build();
 
         menu = PaginatedMenuBuilder.builder(pageTemplate)
                 .slots(itemSlots)
