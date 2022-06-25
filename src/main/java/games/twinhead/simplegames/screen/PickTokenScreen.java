@@ -4,81 +4,41 @@ import games.twinhead.simplegames.SimpleGames;
 import games.twinhead.simplegames.misc.Util;
 import games.twinhead.simplegames.settings.PlayerSettings;
 import games.twinhead.simplegames.settings.Setting;
-import org.bukkit.ChatColor;
 import org.bukkit.Material;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
-import org.ipvp.canvas.Menu;
-import org.ipvp.canvas.mask.BinaryMask;
-import org.ipvp.canvas.mask.Mask;
-import org.ipvp.canvas.paginate.PaginatedMenuBuilder;
 import org.ipvp.canvas.slot.SlotSettings;
-import org.ipvp.canvas.type.ChestMenu;
-import org.jetbrains.annotations.NotNull;
 
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.List;
 
-public class PickTokenScreen implements Screen{
-
-
-    private final Player player;
-
-    private List<Menu> menu;
+public class PickTokenScreen extends Screen{
 
     private final PlayerSettings settings;
     private final SettingsScreen settingsScreen;
-
     private final Setting setting;
 
     public PickTokenScreen(Player player, Setting setting, SettingsScreen settingsScreen){
-        this.player = player;
+        super("Pick a " + Util.formatString(setting.toString()));
+
         this.settingsScreen = settingsScreen;
         this.setting = setting;
-
         settings = SimpleGames.getInstance().getSettingsManager().getSettings(player.getUniqueId());
-    }
 
+        display(player);
+    }
 
     @Override
-    public void display() {
-        Menu.Builder<ChestMenu.Builder> pageTemplate = ChestMenu.builder(6).title(ChatColor.LIGHT_PURPLE + "Pick a " + Util.formatString(setting.toString()));
-
-        Mask itemSlots = BinaryMask.builder(pageTemplate.getDimensions())
-                .pattern("111111111")
-                .pattern("111111111")
-                .pattern("111111111")
-                .pattern("111111111")
-                .pattern("111111111")
-                .pattern("000000000").build();
-
-        menu = PaginatedMenuBuilder.builder(pageTemplate)
-                .slots(itemSlots)
-                .nextButton(new ItemStack(Material.ARROW))
-                .nextButtonEmpty(new ItemStack(Material.AIR)) // Icon when no next page available
-                .nextButtonSlot(53)
-                .previousButton(new ItemStack(Material.ARROW))
-                .previousButtonEmpty(new ItemStack(Material.AIR)) // Icon when no previous page available
-                .previousButtonSlot(45)
-                .addSlotSettings(slotSettings())
-                .build();
-
-        menu.get(0).open(player);
-    }
-
-    private List<SlotSettings> slotSettings(){
+    public List<SlotSettings> getSlotSettings(){
         List<SlotSettings> slotSettings = new ArrayList<>();
         for(ItemStack item: getItemList())
             slotSettings.add(SlotSettings.builder().item(item).clickHandler((player1, clickInformation) -> {
                 settings.setSetting(setting, clickInformation.getClickedSlot().getItem(player1).getType().toString());
-                settingsScreen.display();
+                settingsScreen.display(player1);
             }).build());
         return slotSettings;
     }
-
-
 
     private List<ItemStack> getItemList(){
         List<ItemStack> items = new ArrayList<>();
@@ -114,23 +74,6 @@ public class PickTokenScreen implements Screen{
         for (String c: color) {
             colors.add(Material.valueOf(c.toUpperCase() + "_" + block.toUpperCase()));
         }
-
-
         return colors;
-    }
-
-    @Override
-    public void display(Player player) {
-        menu.get(0).open(player);
-    }
-
-    @Override
-    public @NotNull Menu getMenu() {
-        return menu.get(0);
-    }
-
-    @Override
-    public Collection<Player> getViewers() {
-        return null;
     }
 }

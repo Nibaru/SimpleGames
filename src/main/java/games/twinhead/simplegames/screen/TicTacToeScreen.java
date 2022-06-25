@@ -1,31 +1,22 @@
 package games.twinhead.simplegames.screen;
 
-import games.twinhead.simplegames.SimpleGames;
 import games.twinhead.simplegames.game.Game;
 import games.twinhead.simplegames.game.GameState;
-import games.twinhead.simplegames.settings.Setting;
-import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.Material;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
-import org.bukkit.inventory.meta.SkullMeta;
-import org.ipvp.canvas.Menu;
 import org.ipvp.canvas.mask.Mask;
 import org.ipvp.canvas.mask.RecipeMask;
 import org.ipvp.canvas.slot.Slot;
 import org.ipvp.canvas.template.ItemStackTemplate;
-import org.ipvp.canvas.type.ChestMenu;
-import org.jetbrains.annotations.NotNull;
 
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.List;
 
-public class TicTacToeScreen implements Screen{
+public class TicTacToeScreen extends Screen{
 
-    private final Menu menu;
     private final Player host;
     private final Player challenger;
     
@@ -33,7 +24,7 @@ public class TicTacToeScreen implements Screen{
 
     private final Game game;
 
-    private Slot[] winningRow = new Slot[3];
+    private final Slot[] winningRow = new Slot[3];
 
     private final int[][] boardSlots = {
             {12, 13, 14},
@@ -46,9 +37,7 @@ public class TicTacToeScreen implements Screen{
             {boardMat, boardMat, boardMat}};
 
     public TicTacToeScreen(Game game){
-        menu = ChestMenu.builder(6)
-                .title("Tic Tac Toe")
-                .build();
+        super(game.getGameType().getDisplayName());
 
         this.host = game.getHost();
         this.challenger = game.getChallenger();
@@ -59,19 +48,16 @@ public class TicTacToeScreen implements Screen{
 
 
     @Override
-    public void display() {
+    public void display(Player player) {
         drawScreen();
-
         clickHandler();
-
-        display(host);
-        display(challenger);
+        getMenu().open(player);
     }
 
     private void clickHandler(){
         for (int[] row: boardSlots) {
             for (int num: row) {
-                menu.getSlot(num).setClickHandler(((player, clickInformation) -> {
+                getMenu().getSlot(num).setClickHandler(((player, clickInformation) -> {
                     if(checkForWinner()){
                         return;
                     }
@@ -99,7 +85,7 @@ public class TicTacToeScreen implements Screen{
     }
 
     private void drawScreen(){
-        Mask mask = RecipeMask.builder(menu)
+        Mask mask = RecipeMask.builder(getMenu())
                 .item('T', ScreenItems.turnIndicator(host, game))
                 .item('0', ScreenItems.simpleItem(Material.AIR, " ", new ArrayList<>()))
                 .item('H', ScreenItems.tokenDisplayItem(game.getHostMaterial(), game.getHost()))
@@ -112,7 +98,7 @@ public class TicTacToeScreen implements Screen{
                 .pattern("000000000")
                 .pattern("h0000000c")
                 .pattern("H0000000C").build();
-        mask.apply(menu);
+        mask.apply(getMenu());
 
         drawBoard();
         drawTurnIndicator();
@@ -121,8 +107,8 @@ public class TicTacToeScreen implements Screen{
     private void drawBoard(){
         for (int[] row: boardSlots) {
             for(int slot: row){
-                if(menu.getSlot(slot).getItem(host).getType().equals(boardMat) || menu.getSlot(slot).getItem(host).getType().equals(Material.AIR))
-                    menu.getSlot(slot).setItemTemplate(boardItem());
+                if(getMenu().getSlot(slot).getItem(host).getType().equals(boardMat) || getMenu().getSlot(slot).getItem(host).getType().equals(Material.AIR))
+                    getMenu().getSlot(slot).setItemTemplate(boardItem());
             }
         }
     }
@@ -146,6 +132,7 @@ public class TicTacToeScreen implements Screen{
             }
 
             ItemMeta meta = item.getItemMeta();
+            assert meta != null;
             meta.setDisplayName(" ");
             lore.add("");
             meta.setLore(lore);
@@ -176,13 +163,13 @@ public class TicTacToeScreen implements Screen{
         }
 
         if(!checkForWinner()) game.changeTurn();
-        menu.getSlot(num).setItemTemplate(TokenItem(mat));
+        getMenu().getSlot(num).setItemTemplate(TokenItem(mat));
     }
 
     private void drawTurnIndicator(){
         for (int i = 1; i <= 4; i++) {
-            menu.getSlot(i, 1).setItemTemplate(ScreenItems.turnIndicator(game.getHost(), game));
-            menu.getSlot(i, 9).setItemTemplate(ScreenItems.turnIndicator(game.getChallenger(), game));
+            getMenu().getSlot(i, 1).setItemTemplate(ScreenItems.turnIndicator(game.getHost(), game));
+            getMenu().getSlot(i, 9).setItemTemplate(ScreenItems.turnIndicator(game.getChallenger(), game));
         }
     }
 
@@ -192,6 +179,7 @@ public class TicTacToeScreen implements Screen{
             ItemMeta meta = item.getItemMeta();
             List<String> lore = new ArrayList<>();
 
+            assert meta != null;
             meta.setDisplayName(" ");
 
             if(material == game.getHostMaterial()){
@@ -288,22 +276,4 @@ public class TicTacToeScreen implements Screen{
 
         return false;
     }
-
-    @Override
-    public void display(Player player){
-        menu.open(player);
-    }
-
-
-    @Override
-    public @NotNull Menu getMenu() {
-        return menu;
-    }
-
-    @Override
-    public Collection<Player> getViewers(){
-        return menu.getViewers();
-    }
-
-
 }

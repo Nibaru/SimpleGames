@@ -66,7 +66,8 @@ public class Game {
 
 
     public void openAll(){
-        getScreen().display();
+        getScreen().display(host);
+        getScreen().display(challenger);
     }
 
     public void open(Player player){

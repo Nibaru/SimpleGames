@@ -14,10 +14,10 @@ public class SettingsCommand implements TabExecutor {
     @Override
     public boolean onCommand(@NotNull CommandSender sender, @NotNull Command command, @NotNull String label, @NotNull String[] args) {
         //TODO Check if settings are enabled
-        if(!(sender instanceof Player)) return false;
+        if(!(sender instanceof Player player)) return false;
 
-        SettingsScreen screen = new SettingsScreen(((Player) sender).getPlayer());
-        screen.display();
+        SettingsScreen screen = new SettingsScreen(player);
+        screen.display(player);
 
         return false;
     }
