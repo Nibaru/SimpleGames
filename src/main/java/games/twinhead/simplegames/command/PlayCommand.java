@@ -3,6 +3,7 @@ package games.twinhead.simplegames.command;
 import games.twinhead.simplegames.SimpleGames;
 import games.twinhead.simplegames.game.Game;
 import games.twinhead.simplegames.game.GameType;
+import games.twinhead.simplegames.screen.MainScreen;
 import net.md_5.bungee.api.ChatColor;
 import net.md_5.bungee.api.chat.*;
 import net.md_5.bungee.api.chat.hover.content.Text;
@@ -22,40 +23,10 @@ public class PlayCommand implements TabExecutor {
 
         switch (args.length){
             case 0 -> {
-                if(SimpleGames.getInstance().getGameManager().hasGameActive(player)){
-                    if(SimpleGames.getInstance().getGameManager().getActiveGames(player).size() > 1){
-                        for(Game g: SimpleGames.getInstance().getGameManager().getActiveGames(player)){
-                            sendGameMessage(g, player);
-                        }
-                    } else {
-                        SimpleGames.getInstance().getGameManager().getActiveGames(player).get(0).getScreen().display(player);
-                    }
-                    return true;
-                }
+                new MainScreen(player);
             }
             case 1 -> {
-
-                GameType type;
-                try {
-                    type = GameType.valueOf(args[0].toUpperCase());
-                } catch (IllegalArgumentException e){
-                    sender.sendMessage("Unable to find game type: " + args[0]);
-                    return false;
-                }
-
-                if(SimpleGames.getInstance().getGameManager().hasGameOfThisTypeActive(player, type)) {
-                    for(Game game: SimpleGames.getInstance().getGameManager().getActiveGames(player)){
-                        if(game.getGameType().equals(type)){
-                            game.open(player);
-                        }
-                    }
-                    return true;
-                } else {
-                    player.sendMessage("You don't have a game of " + type.getDisplayName() + " active.");
-                    return false;
-                }
             }
-
             case 2 -> {
                 //todo check if the player selected is a player
 
@@ -67,11 +38,9 @@ public class PlayCommand implements TabExecutor {
                     return false;
                 }
 
-                if(!SimpleGames.getInstance().getGameManager().hasGameOfThisTypeActive(player, type)){
-                    Game game = new Game(type, player, SimpleGames.getInstance().getServer().getPlayer(args[1]));
-                    SimpleGames.getInstance().getGameManager().addPending(game);
-                    return true;
-                }
+                SimpleGames.getInstance().getGameManager().sendGameInvite(type, player, SimpleGames.getInstance().getServer().getPlayer(args[1]));
+                return true;
+
             }
         }
 
@@ -79,7 +48,7 @@ public class PlayCommand implements TabExecutor {
     }
 
     public void sendGameMessage(Game game, Player player){
-        TextComponent content = new TextComponent("Game: " + game.getGameType().getDisplayName() + " vs. " + game.getOpponent(player).getDisplayName());
+        TextComponent content = new TextComponent("Game: " + game.getGameType().getDisplayName() + " vs. " + game.getOpponents(player).get(0).getDisplayName());
         TextComponent play = new TextComponent("[ /Play ]");
         TextComponent abandon = new TextComponent("[ /Abandon ]");
 

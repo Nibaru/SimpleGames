@@ -37,6 +37,10 @@ public class PlayerSettings {
         return Integer.valueOf(getSetting(key));
     }
 
+    public void invertBoolSetting(Setting key){
+        setSetting(key, String.valueOf(!getBoolean(key)));
+    }
+
     public void setSetting(Setting key, String value){
         if(value == null) {
             settings.put(key, key.getDefaultSetting());

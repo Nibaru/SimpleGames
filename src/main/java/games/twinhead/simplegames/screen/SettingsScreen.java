@@ -9,6 +9,7 @@ import org.bukkit.Material;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
+import org.ipvp.canvas.slot.SlotSettings;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -27,27 +28,50 @@ public class SettingsScreen extends Screen{
 
     private void drawSettings(){
         int count = 9;
-        for (Setting s: Setting.values()) {
-            getMenu().getSlot(count).setItem(TokenSettingItem(s, settings.getString(s)));
-            getMenu().getSlot(count++).setClickHandler((player, info) -> {
-                PickTokenScreen screen = new PickTokenScreen(player, s, this);
-                screen.display(player);
-            });
-        }
+        getMenu().getSlot(count++).setSettings(TokenSettingItem(Setting.TIC_TAC_TOE_TOKEN));
+        getMenu().getSlot(count++).setSettings(TokenSettingItem(Setting.CONNECT_FOUR_TOKEN));
+        getMenu().getSlot(count).setSettings(BooleanSetting(Setting.SHOW_ITEM_BORDER));
     }
 
-    public ItemStack TokenSettingItem(Setting s, String value){
-        ItemStack item = new ItemStack(Material.valueOf(value));
-        ItemMeta meta = item.getItemMeta();
-        List<String> lore = new ArrayList<>();
+    public SlotSettings TokenSettingItem(Setting s){
+        return SlotSettings.builder().itemTemplate(player -> {
+            ItemStack item = new ItemStack(Material.valueOf(settings.getString(s)));
+            ItemMeta meta = item.getItemMeta();
+            List<String> lore = new ArrayList<>();
 
-        assert meta != null;
-        meta.setDisplayName(ChatColor.YELLOW + "Pick a new " + Util.formatString(s.toString()));
-        lore.add(ChatColor.GRAY + " Current: " + Util.formatString(value));
+            assert meta != null;
+            meta.setDisplayName(ChatColor.YELLOW + "Pick a new " + Util.formatString(s.toString()));
+            lore.add(ChatColor.GRAY + " Current: " + Util.formatString(settings.getString(s)));
 
 
-        meta.setLore(lore);
-        item.setItemMeta(meta);
-        return item;
+            meta.setLore(lore);
+            item.setItemMeta(meta);
+            return ScreenItems.addBorderToItem(item).getItem(player);
+        }).clickHandler((player1, clickInformation) -> new PickTokenScreen(player1, s, this)).build();
+
+    }
+
+    private SlotSettings BooleanSetting(Setting setting){
+        return SlotSettings.builder().itemTemplate(player -> {
+            Boolean showBoarder = SimpleGames.getInstance().getSettingsManager().getSettings(player.getUniqueId()).getBoolean(setting);
+
+            ItemStack item = (showBoarder ? new ItemStack(Material.OXIDIZED_COPPER) : new ItemStack(Material.COPPER_BLOCK));
+
+            ItemMeta meta = item.getItemMeta();
+            List<String> lore = new ArrayList<>();
+
+            assert meta != null;
+            meta.setDisplayName(ChatColor.YELLOW + Util.formatString(setting.toString()));
+            lore.add(ChatColor.GRAY + " Current: " + (showBoarder ? ChatColor.GREEN:ChatColor.RED) +  "[ " + showBoarder + " ]");
+
+
+            meta.setLore(lore);
+            item.setItemMeta(meta);
+            return ScreenItems.addBorderToItem(item).getItem(player);
+
+        }).clickHandler((player1, clickInformation) -> {
+            SimpleGames.getInstance().getSettingsManager().getSettings(player1.getUniqueId()).invertBoolSetting(setting);
+            drawSettings();
+        }).build();
     }
 }

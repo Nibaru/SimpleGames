@@ -13,6 +13,7 @@ import org.ipvp.canvas.slot.SlotSettings;
 import org.ipvp.canvas.template.ItemStackTemplate;
 import org.ipvp.canvas.type.ChestMenu;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -20,11 +21,25 @@ import java.util.List;
 
 public class Screen {
 
-    private final List<Menu> menu;
+    List<Menu> menu;
     private final String screenName;
+    private Player owner;
+
 
     public Screen(String screenName){
         this.screenName = screenName;
+        setMenu();
+    }
+
+    public Screen(String screenName, Player owner){
+        this.screenName = screenName;
+        this.owner = owner;
+        setMenu();
+    }
+
+
+
+    public void setMenu(){
         menu = PaginatedMenuBuilder.builder(getMenuBuilder(screenName))
                 .slots(getMask())
                 .nextButton(getNextItem())
@@ -37,20 +52,29 @@ public class Screen {
                 .build();
     }
 
+    public @Nullable Player getOwner(){
+        return owner;
+    }
+
+    @NotNull
     public String getScreenName(){
         return this.screenName;
     }
 
+    @NotNull
+
     public Menu.Builder<ChestMenu.Builder> getMenuBuilder(String screenName){
-        return ChestMenu.builder(6).title(screenName);
+        return ChestMenu.builder(getRows()).title(screenName);
     }
 
+    @NotNull
     public int getNextButtonSlot(){
-        return 53;
+        return getMenuBuilder(getScreenName()).getDimensions().getArea() - 1;
     }
 
+    @NotNull
     public int getPreviousButtonSlot(){
-        return 45;
+        return getMenuBuilder(getScreenName()).getDimensions().getArea() - 9;
     }
 
     @NotNull
@@ -79,13 +103,12 @@ public class Screen {
 
     @NotNull
     public Mask getMask(){
-        return BinaryMask.builder(getMenuBuilder(getScreenName()).build())
-                .pattern("111111111")
-                .pattern("111111111")
-                .pattern("111111111")
-                .pattern("111111111")
-                .pattern("111111111")
-                .pattern("000000000").build();
+        BinaryMask.BinaryMaskBuilder builder = BinaryMask.builder(getMenuBuilder(getScreenName()).build());
+        for (int i = 0; i < getRows()-1; i++) {
+            builder.pattern("111111111");
+        }
+        builder.pattern("000000000");
+        return builder.build();
     }
 
     public List<SlotSettings> getSlotSettings(){
@@ -111,5 +134,15 @@ public class Screen {
             players.addAll(m.getViewers());
         }
         return players;
+    }
+
+    public void refreshMenu(){
+        for (Player p: getViewers()) {
+            display(p);
+        }
+    }
+
+    public int getRows() {
+        return 6;
     }
 }
