@@ -19,7 +19,6 @@ import org.jetbrains.annotations.NotNull;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Objects;
 
 public class MainScreen extends Screen{
 
@@ -53,7 +52,7 @@ public class MainScreen extends Screen{
             assert meta != null;
             meta.setDisplayName(ChatColor.WHITE + "Game: " +  game.getGameType().getDisplayName());
             lore.add(ChatColor.GRAY + "");
-            lore.add(ChatColor.GRAY + "   Vs. " + game.getOpponents(viewer).get(0).getDisplayName());
+            lore.add(ChatColor.GRAY +  (game.getOpponents(viewer).size() == 0 ? "Single-player" : "   Vs. " + game.getOpponents(viewer).get(0).getDisplayName()));
             lore.add(ChatColor.GRAY + "   State: " + (game.getState().equals(GameState.PLAYING) && viewer.equals(game.getCurrentTurn()) ? " Waiting for you." : Util.formatString(game.getState().toString())));
             lore.add("");
             lore.add(ChatColor.GREEN + "[ Click ] to Play!");

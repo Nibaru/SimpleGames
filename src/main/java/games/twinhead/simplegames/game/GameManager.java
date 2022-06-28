@@ -45,6 +45,18 @@ public class GameManager {
         gameInvites.add(new GameInvite(type, sender, receiver));
     }
 
+    //Returns a boolean based on if the game was started or not
+    public Boolean startSinglePlayerGame(GameType type, Player sender){
+        if(!playerHaveActiveGameOfType(sender, type)){
+            Game game = new Game(new GameInvite(type, sender));
+            activeGames.add(game);
+            game.open(sender);
+
+            return true;
+        }
+        return false;
+    }
+
     public void clearActiveGames(){
         for (Game g: getActiveGames()) {
             g.getScreen().getMenu().close();
@@ -61,6 +73,12 @@ public class GameManager {
             games.add(g);
         }
         return games;
+    }
+    public Boolean playerHaveActiveGameOfType(Player player, GameType type){
+        for (Game g: getActiveGames(player)) {
+            if (g.getGameType().equals(type) && !g.getState().equals(GameState.COMPLETED)) return true;
+        }
+        return false;
     }
 
     public Boolean gameExists(UUID uuid){

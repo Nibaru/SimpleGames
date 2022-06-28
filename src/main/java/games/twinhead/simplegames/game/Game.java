@@ -1,14 +1,17 @@
 package games.twinhead.simplegames.game;
 
 import games.twinhead.simplegames.SimpleGames;
+import games.twinhead.simplegames.events.GameEndEvent;
 import games.twinhead.simplegames.screen.Screen;
 import games.twinhead.simplegames.screen.game.ConnectFourScreen;
 import games.twinhead.simplegames.screen.game.MinesweeperScreen;
 import games.twinhead.simplegames.screen.game.RockPaperScissorsScreen;
 import games.twinhead.simplegames.screen.game.TicTacToeScreen;
 import games.twinhead.simplegames.settings.Setting;
+import org.bukkit.Bukkit;
 import org.bukkit.Material;
 import org.bukkit.entity.Player;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.*;
 
@@ -35,7 +38,7 @@ public class Game {
         this.screen = getScreen(gameType);
         this.gameId = UUID.randomUUID();
         addPlayer(invite.getSender());
-        addPlayer(invite.getReceiver());
+        if(invite.getReceiver() != null) addPlayer(invite.getReceiver());
     }
 
     public Screen getScreen(GameType gameType){
@@ -78,15 +81,19 @@ public class Game {
         return players;
     }
 
-    public Player getPlayer(int index){
-        return players.get(index);
+    public @Nullable Player getPlayer(int index){
+        try {
+            return players.get(index);
+        }catch (IndexOutOfBoundsException e){
+            return null;
+        }
     }
 
     public void setPlayerMaterial(Player player){
         String mat = switch (getGameType()){
             case TIC_TAC_TOE -> SimpleGames.getInstance().getSettingsManager().getSettings(player.getUniqueId()).getString(Setting.TIC_TAC_TOE_TOKEN);
             case CONNECT_FOUR -> SimpleGames.getInstance().getSettingsManager().getSettings(player.getUniqueId()).getString(Setting.CONNECT_FOUR_TOKEN);
-            case ROCK_PAPER_SCISSORS, MINESWEEPER -> "AIR";
+            case ROCK_PAPER_SCISSORS, MINESWEEPER -> "GLASS";
         };
 
         materials.put(player, Material.valueOf(mat));
@@ -132,6 +139,8 @@ public class Game {
 
     public void setState(GameState state) {
         this.state = state;
+        if(state.equals(GameState.COMPLETED))
+            Bukkit.getPluginManager().callEvent(new GameEndEvent(this));
     }
 
     public GameType getGameType() {

@@ -220,22 +220,22 @@ public class RockPaperScissorsScreen extends Screen {
             return ScreenItems.addBorderToItem(item).getItem(player);
         };
     }
+    private enum Option{
+        ROCK,
+        PAPER,
+        SCISSORS,
+        NONE;
 
-
-}
-
-enum Option{
-    ROCK,
-    PAPER,
-    SCISSORS,
-    NONE;
-
-    public Option winTo(){
-        return switch (this){
-            case ROCK -> SCISSORS;
-            case PAPER -> ROCK;
-            case SCISSORS -> PAPER;
-            case NONE -> NONE;
-        };
+        public Option winTo(){
+            return switch (this){
+                case ROCK -> SCISSORS;
+                case PAPER -> ROCK;
+                case SCISSORS -> PAPER;
+                case NONE -> NONE;
+            };
+        }
     }
+
 }
+
+

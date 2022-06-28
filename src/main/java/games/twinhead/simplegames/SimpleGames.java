@@ -3,13 +3,12 @@ package games.twinhead.simplegames;
 import games.twinhead.simplegames.command.*;
 import games.twinhead.simplegames.database.Implementation;
 import games.twinhead.simplegames.database.SqliteImplementation;
-import games.twinhead.simplegames.events.OnWinEvent;
+import games.twinhead.simplegames.events.OnGameEndEvent;
 import games.twinhead.simplegames.events.PlayerEvents;
 import games.twinhead.simplegames.misc.ConfigManager;
 import games.twinhead.simplegames.game.GameManager;
 import games.twinhead.simplegames.settings.SettingsManager;
 import org.bukkit.Bukkit;
-import org.bukkit.entity.Player;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.ipvp.canvas.MenuFunctionListener;
 
@@ -43,7 +42,7 @@ public final class SimpleGames extends JavaPlugin {
 
 
         Bukkit.getPluginManager().registerEvents(new MenuFunctionListener(), this);
-        Bukkit.getPluginManager().registerEvents(new OnWinEvent(), this);
+        Bukkit.getPluginManager().registerEvents(new OnGameEndEvent(), this);
         Bukkit.getPluginManager().registerEvents(new PlayerEvents(this), this);
 
         this.getCommand("play").setExecutor(new PlayCommand());
@@ -52,6 +51,7 @@ public final class SimpleGames extends JavaPlugin {
         this.getCommand("listgames").setExecutor(new ListCommand());
         this.getCommand("reload").setExecutor(new ReloadCommand());
         this.getCommand("settings").setExecutor(new SettingsCommand());
+        this.getCommand("bigscreen").setExecutor(new BigScreenCommand());
     }
 
     @Override

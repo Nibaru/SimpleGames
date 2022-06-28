@@ -14,6 +14,13 @@ public enum GameType {
         this.displayName = displayName;
     }
 
+    public Boolean isSinglePlayer(){
+        return switch (this){
+            case MINESWEEPER -> true;
+            default -> false;
+        };
+    }
+
     public String getDisplayName(){
         return this.displayName;
     }

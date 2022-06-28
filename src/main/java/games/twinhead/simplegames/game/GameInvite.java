@@ -25,6 +25,14 @@ public class GameInvite {
         sendInviteMessage();
     }
 
+    public GameInvite(GameType game, Player sender){
+        this.inviteId = UUID.randomUUID();
+        this.gameType = game;
+        this.sender = sender;
+        this.receiver = null;
+        setState(InviteState.ACCEPTED);
+    }
+
     public InviteState getState() {
         return state;
     }

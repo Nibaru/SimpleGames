@@ -26,6 +26,14 @@ public class PlayCommand implements TabExecutor {
                 new MainScreen(player);
             }
             case 1 -> {
+                switch (args[0].toUpperCase()){
+                    case "MINESWEEPER" -> {
+                        if(!SimpleGames.getInstance().getGameManager().startSinglePlayerGame(GameType.MINESWEEPER, player)){
+                            sender.sendMessage("You already have an active " + GameType.MINESWEEPER.getDisplayName() + " game [/play] to see your active games");
+                        }
+
+                    }
+                }
             }
             case 2 -> {
                 //todo check if the player selected is a player
