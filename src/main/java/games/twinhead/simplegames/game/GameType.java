@@ -1,10 +1,12 @@
 package games.twinhead.simplegames.game;
 
-public enum GameType {
-    TIC_TAC_TOE("Tic Tac Toe"),
-    CONNECT_FOUR("Connect Four"),
-    ROCK_PAPER_SCISSORS("Rock Paper Scissors");
+import org.bukkit.ChatColor;
 
+public enum GameType {
+    TIC_TAC_TOE(ChatColor.YELLOW.toString() + ChatColor.BOLD.toString() +  "Tic Tac Toe"),
+    CONNECT_FOUR(ChatColor.BLUE.toString() + ChatColor.BOLD.toString() + "Connect Four"),
+    ROCK_PAPER_SCISSORS(ChatColor.DARK_GRAY.toString() + ChatColor.BOLD.toString() + "Rock Paper Scissors"),
+    MINESWEEPER(ChatColor.DARK_GRAY.toString() + ChatColor.BOLD.toString() + "Minesweeper");
 
     final String displayName;
 
@@ -12,7 +14,15 @@ public enum GameType {
         this.displayName = displayName;
     }
 
+    public Boolean isSinglePlayer(){
+        return switch (this){
+            case MINESWEEPER -> true;
+            default -> false;
+        };
+    }
+
     public String getDisplayName(){
         return this.displayName;
     }
+
 }

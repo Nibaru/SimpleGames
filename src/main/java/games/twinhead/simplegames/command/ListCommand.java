@@ -16,11 +16,7 @@ public class ListCommand implements TabExecutor {
 
         sender.sendMessage("Active Games:");
         for (Game game: SimpleGames.getInstance().getGameManager().getActiveGames()) {
-            sender.sendMessage("    Game: " + game.getGameType() + " " +  game.getHost().getDisplayName() + " Vs. " + game.getChallenger().getDisplayName() + " State: " + game.getState());
-        }
-        sender.sendMessage("Pending Games:");
-        for (Game game: SimpleGames.getInstance().getGameManager().getPendingGames()) {
-            sender.sendMessage("    Game: " + game.getGameType() + " " +  game.getHost().getDisplayName() + " Vs. " + game.getChallenger().getDisplayName() + " State: " + game.getState());
+            sender.sendMessage("    Game: " + game.getGameType() + " " +  (game.getGameType().isSinglePlayer() ? " Single-player" : game.getPlayer(0).getDisplayName() + " Vs. " + game.getPlayer(1).getDisplayName()) + " State: " + game.getState());
         }
         return false;
     }

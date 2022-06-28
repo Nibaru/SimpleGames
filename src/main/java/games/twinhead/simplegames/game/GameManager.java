@@ -1,111 +1,102 @@
 package games.twinhead.simplegames.game;
 
-import games.twinhead.simplegames.SimpleGames;
 import net.md_5.bungee.api.ChatColor;
 import net.md_5.bungee.api.chat.*;
 import net.md_5.bungee.api.chat.hover.content.Text;
 import org.bukkit.entity.Player;
-import org.bukkit.scheduler.BukkitRunnable;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 
 public class GameManager {
 
     private final ArrayList<Game> activeGames = new ArrayList<>();
-    private final ArrayList<Game> pendingGames = new ArrayList<>();
+    private final ArrayList<GameInvite> gameInvites = new ArrayList<>();
 
-    public GameManager() {
-    }
+    public GameManager() {}
 
-    public Boolean hasGameActive(Player player) {
-        for (Game game : activeGames) {
-            if ((game.getHost() == player || game.getChallenger() == player) && game.getState() != GameState.COMPLETED)
-                return true;
-        }
-        return false;
-    }
-
-    public Boolean hasGameOfThisTypeActive(Player player, GameType type) {
-        for (Game game : getActiveGames()) {
-            if(game.getHost().equals(player) || game.getChallenger().equals(player))
-                if (game.getGameType().equals(type) && (game.getState().equals(GameState.STARTING) ||game.getState().equals(GameState.PLAYING) || game.getState().equals(GameState.PENDING))) return true;
-        }
-        return false;
-    }
-
-    public List<Game> getActiveGames(Player player) {
-        List<Game> games = new ArrayList<>();
-        for (Game game : activeGames) {
-            if (game.getHost() == player || game.getChallenger() == player) games.add(game);
-        }
-        return games;
-    }
-
-    public Boolean acceptGame(Player player) {
-        for (Game g : pendingGames) {
-            if (g.getChallenger() == player && !g.getState().equals(GameState.DECLINED)) {
-                g.setState(GameState.STARTING);
-                return true;
-            }
-        }
-        return false;
-    }
-
-    public Boolean declineGame(Player player) {
-        for (Game g : pendingGames) {
-            if (g.getChallenger() == player) {
-                g.setState(GameState.DECLINED);
-                removePending(g);
-                return true;
-            }
-
-        }
-        return false;
-    }
-
-    private void removeCompletedGames() {
-        activeGames.removeIf(game -> game.getState().equals(GameState.COMPLETED) || game.getState().equals(GameState.DECLINED));
-    }
-
-    public void addPending(Game game) {
-        pendingGames.add(game);
-        waitForChallenger(game);
-    }
-
-    public void removePending(Game game) {
-        pendingGames.remove(game);
-    }
-
-    public void addGame(Game game) {
-        pendingGames.remove(game);
+    public void addGame(GameInvite invite){
+        Game game = new Game(invite);
         activeGames.add(game);
-
         game.openAll();
     }
 
-    public void removeGame(Game game) {
-        activeGames.remove(game);
-    }
-
-    public ArrayList<Game> getActiveGames() {
-        return activeGames;
-    }
-
-    public ArrayList<Game> getPendingGames(){
-        return pendingGames;
-    }
-
-    public void clearActiveGames(){
-        for(Game game: getActiveGames()){
-            if(game.getScreen().getViewers().size() > 0){
-                game.getScreen().getMenu().close();
+    public void acceptGameInvite(UUID inviteId){
+        for (GameInvite invite: gameInvites) {
+            if(invite.getInviteId().equals(inviteId)) {
+                invite.setState(InviteState.ACCEPTED);
+                addGame(invite);
             }
         }
     }
 
+    public void declineGameInvite(UUID inviteId){
+        for (GameInvite invite: gameInvites) {
+            if(invite.getInviteId().equals(inviteId)) {
+                invite.setState(InviteState.DECLINED);
+                addGame(invite);
+            }
+        }
+    }
 
-    public void sendAcceptMessage(Player host, Player challenger, GameType gameType) {
+    public void sendGameInvite(GameType type, Player sender, Player receiver){
+        gameInvites.add(new GameInvite(type, sender, receiver));
+    }
+
+    //Returns a boolean based on if the game was started or not
+    public Boolean startSinglePlayerGame(GameType type, Player sender){
+        if(!playerHaveActiveGameOfType(sender, type)){
+            Game game = new Game(new GameInvite(type, sender));
+            activeGames.add(game);
+            game.open(sender);
+
+            return true;
+        }
+        return false;
+    }
+
+    public void clearActiveGames(){
+        for (Game g: getActiveGames()) {
+            g.getScreen().getMenu().close();
+        }
+    }
+
+    public List<Game> getActiveGames(){
+        return activeGames;
+    }
+
+    public List<Game> getActiveGames(Player player){
+        List<Game> games = new ArrayList<>();
+        for (Game g: getActiveGames()) {
+            games.add(g);
+        }
+        return games;
+    }
+    public Boolean playerHaveActiveGameOfType(Player player, GameType type){
+        for (Game g: getActiveGames(player)) {
+            if (g.getGameType().equals(type) && !g.getState().equals(GameState.COMPLETED)) return true;
+        }
+        return false;
+    }
+
+    public Boolean gameExists(UUID uuid){
+        for (Game g: getActiveGames()) {
+            if(g.getGameId().equals(uuid)) return true;
+        }
+        return null;
+    }
+
+    public @Nullable Game getGame(UUID uuid){
+        for (Game g: getActiveGames()) {
+            if(g.getGameId().equals(uuid)) return g;
+        }
+        return null;
+    }
+
+
+    public void sendAcceptMessage(Player host, List<Player> challengers, GameType gameType) {
         TextComponent content = new TextComponent(host.getDisplayName() + " has challenged you to a game of " + gameType.getDisplayName());
         TextComponent accept = new TextComponent("[ /Accept ]");
         TextComponent decline = new TextComponent("[ /Decline ]");
@@ -121,14 +112,17 @@ public class GameManager {
 
         BaseComponent[] component = new ComponentBuilder().append("     ").append(accept).append("     ").append(decline).create();
 
-        challenger.spigot().sendMessage(spacer);
-        challenger.spigot().sendMessage(content);
-        challenger.spigot().sendMessage(component);
-        challenger.spigot().sendMessage(spacer);
+        for(Player player: challengers){
+            player.spigot().sendMessage(spacer);
+            player.spigot().sendMessage(content);
+            player.spigot().sendMessage(component);
+            player.spigot().sendMessage(spacer);
+        }
     }
 
+    /**
     public void waitForChallenger(Game game) {
-        sendAcceptMessage(game.getHost(), game.getChallenger(), game.getGameType());
+        sendAcceptMessage(game.getPlayer(), game.getOpponents(game.getPlayer()), game.getGameType());
 
         new BukkitRunnable() {
             Long startTime = System.currentTimeMillis();
@@ -148,12 +142,13 @@ public class GameManager {
                 }
 
                 if (System.currentTimeMillis() > startTime + 30000) {
-                    game.getChallenger().sendMessage("Your invite to " + game.getGameType().getDisplayName() + "from " + game.getHost().getDisplayName() + " has expired");
-                    game.getHost().sendMessage("Your invite to play " + game.getGameType().getDisplayName() + " with " + game.getChallenger().getDisplayName() + " has expired");
+                    //TODO change this to handle a game with more than one player
+                    game.getOpponents(game.getPlayer()).get(0).sendMessage("Your invite to " + game.getGameType().getDisplayName() + "from " + game.getPlayer().getDisplayName() + " has expired");
+                    game.getPlayer().sendMessage("Your invite to play " + game.getGameType().getDisplayName() + " with " + game.getOpponents(game.getPlayer()).get(0).getDisplayName() + " has expired");
                     this.cancel();
                 }
             }
 
         }.runTaskTimer(SimpleGames.getInstance(), 20 * 1, 20 * 1);
-    }
+    }**/
 }

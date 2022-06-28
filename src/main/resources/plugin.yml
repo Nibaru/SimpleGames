@@ -28,3 +28,4 @@ commands:
     usage: /<command>
     description: Opens the settings screen
   listgames:
+  bigscreen:
