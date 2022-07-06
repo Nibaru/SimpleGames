@@ -30,7 +30,8 @@ public class SettingsScreen extends Screen{
         int count = 9;
         getMenu().getSlot(count++).setSettings(TokenSettingItem(Setting.TIC_TAC_TOE_TOKEN));
         getMenu().getSlot(count++).setSettings(TokenSettingItem(Setting.CONNECT_FOUR_TOKEN));
-        getMenu().getSlot(count).setSettings(BooleanSetting(Setting.SHOW_ITEM_BORDER));
+        getMenu().getSlot(count++).setSettings(BooleanSetting(Setting.SHOW_ITEM_BORDER));
+        getMenu().getSlot(count++).setSettings(BooleanSetting(Setting.HIDE_IN_PLAYER_LIST));
     }
 
     public SlotSettings TokenSettingItem(Setting s){

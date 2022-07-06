@@ -5,6 +5,7 @@ import games.twinhead.simplegames.game.Game;
 import games.twinhead.simplegames.game.GameState;
 import games.twinhead.simplegames.misc.ItemUtil;
 import games.twinhead.simplegames.misc.Util;
+import games.twinhead.simplegames.screen.game.PlayGameScreen;
 import org.bukkit.ChatColor;
 import org.bukkit.Material;
 import org.bukkit.enchantments.Enchantment;
@@ -29,12 +30,29 @@ public class MainScreen extends Screen{
 
     @Override
     public void display(Player player){
-        setMenu();
+        getMenu().getSlot(10).setSettings(PlayGameSettings());
         getMenu().open(player);
     }
 
     public void refresh(Player player){
         getMenu().open(player);
+    }
+
+    public SlotSettings PlayGameSettings(){
+        return SlotSettings.builder().itemTemplate(viewer -> {
+            ItemStack item = new ItemStack(Material.GOLDEN_APPLE);
+            ItemMeta meta = item.getItemMeta();
+            List<String> lore = new ArrayList<>();
+
+            meta.setDisplayName(ChatColor.GREEN + "Play A game");
+
+            meta.setLore(lore);
+            meta.addItemFlags(ItemFlag.values());
+            item.setItemMeta(meta);
+            return ScreenItems.addBorderToItem(item).getItem(viewer);
+        }).clickHandler((player1, clickInformation) -> {
+            new PlayGameScreen(player1);
+        }).build();
     }
 
     public SlotSettings GameSlotSetting(Game game){
