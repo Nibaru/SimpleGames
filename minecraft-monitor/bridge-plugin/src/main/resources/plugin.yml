@@ -1,0 +1,7 @@
+name: MonitorBridge
+version: ${project.version}
+main: games.twinhead.monitorbridge.MonitorBridgePlugin
+api-version: '1.21'
+authors: [Twinhead]
+description: Live data bridge for the Minecraft Server Monitor web dashboard
+website: https://github.com/Nibaru/SimpleGames

@@ -40,7 +40,7 @@ A web dashboard for monitoring **PaperMC** (and other Minecraft Java Edition) se
 
 ### UI & UX
 - **3 themes** — Dark, Light, and Minecraft-inspired
-- **Tabbed navigation** — Overview, Players, Commands, Server panels
+- **Tabbed navigation** — Overview, Players, Commands, Server, Content panels
 - **Health score ring** — computed from TPS and MSPT
 - **TPS sparkline** — with gradient fill in header
 - **Command palette** — Ctrl+K fuzzy search for commands
@@ -62,6 +62,34 @@ A web dashboard for monitoring **PaperMC** (and other Minecraft Java Edition) se
 - Node.js 18+
 - A running PaperMC server with **RCON enabled**
 - The monitor must be able to read the server log file (run on the same machine, or mount the server directory)
+
+## MonitorBridge Plugin (recommended)
+
+For the best experience, install the **MonitorBridge** Paper plugin included in `bridge-plugin/`.
+
+```bash
+cd bridge-plugin
+mvn package
+# Copy target/MonitorBridge-1.0.0.jar to your server's plugins/ folder
+```
+
+Set the same API key in both places:
+
+**plugins/MonitorBridge/config.yml**
+```yaml
+http:
+  api-key: your-secret-key
+```
+
+**minecraft-monitor/.env**
+```env
+BRIDGE_URL=http://127.0.0.1:8765
+BRIDGE_API_KEY=your-secret-key
+```
+
+The monitor will automatically use the bridge for live TPS, player ping, structured logs (chat, deaths, commands), and plugin data. RCON is still used for sending commands.
+
+See [bridge-plugin/README.md](bridge-plugin/README.md) for full details.
 
 ## Setup
 

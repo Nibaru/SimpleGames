@@ -58,7 +58,7 @@ function cacheElements() {
     'datapackSearch', 'refreshDatapacks', 'reloadDatapacks', 'listDatapacksRcon',
     'scheduleRestart', 'cancelRestart', 'restartDelay',
     'stopServerBtn', 'toastContainer', 'tpsChart', 'commandSuggestions', 'cmdSearch',
-    'infoVersion', 'infoDifficulty', 'infoGamemode', 'logStats', 'wsPill', 'rconPill',
+    'infoVersion', 'infoDifficulty', 'infoGamemode', 'logStats', 'wsPill', 'rconPill', 'bridgePill',
     'themeToggle', 'settingsBtn', 'shortcutsBtn', 'settingsModal', 'shortcutsModal',
     'commandPalette', 'paletteInput', 'paletteResults', 'openPalette', 'toggleSidebar',
     'sidePanel', 'paneContainer', 'splitter', 'fullscreenLogs', 'logPane', 'consolePane', 'logFontSize', 'consoleFontSize',
@@ -174,6 +174,10 @@ function classifyLogLine(line, parsed) {
   if (level === 'warn' || level === 'warning') return 'warn';
   if (level === 'error' || level === 'severe' || level === 'fatal') return 'error';
   if (lower.includes('joined the game') || lower.includes('left the game')) return 'player';
+  if (lower.includes('monitorbridge/chat') || lower.includes('] chat:')) return 'chat';
+  if (lower.includes('monitorbridge/death') || lower.includes('died')) return 'warn';
+  if (lower.includes('monitorbridge/command')) return 'info';
+  if (lower.includes('monitorbridge/kick')) return 'error';
   if (lower.includes('error') || lower.includes('exception')) return 'error';
   if (lower.includes('warn')) return 'warn';
   if (lower.includes('done') || lower.includes('success')) return 'success';
@@ -188,6 +192,7 @@ function lineMatchesFilter(line, type) {
   if (state.logSearch && !line.toLowerCase().includes(state.logSearch.toLowerCase())) return false;
   if (state.logFilter === 'all') return true;
   if (state.logFilter === 'player') return type === 'player';
+  if (state.logFilter === 'chat') return type === 'chat';
   return type === state.logFilter;
 }
 
@@ -237,7 +242,12 @@ function applyLogFilters() {
     const type = el.dataset.type || '';
     const text = el.dataset.text || el.textContent.toLowerCase();
     const matchesSearch = !state.logSearch || text.includes(state.logSearch.toLowerCase());
-    let matchesFilter = state.logFilter === 'all' || (state.logFilter === 'player' ? type === 'player' : type === state.logFilter);
+    let matchesFilter = state.logFilter === 'all';
+    if (!matchesFilter) {
+      if (state.logFilter === 'player') matchesFilter = type === 'player';
+      else if (state.logFilter === 'chat') matchesFilter = type === 'chat';
+      else matchesFilter = type === state.logFilter;
+    }
     el.classList.toggle('hidden', !(matchesSearch && matchesFilter));
   }
   updateLogStats();
@@ -290,7 +300,9 @@ function updateStatus(data) {
   const online = data.online;
   elements.statusBadge.classList.toggle('online', online);
   elements.statusBadge.classList.toggle('offline', !online);
-  elements.statusText.textContent = online ? 'Online' : 'Offline';
+  elements.statusText.textContent = online ? (data.bridgeConnected ? 'Online (Bridge)' : 'Online') : 'Offline';
+  if (data.bridgeConnected) elements.bridgePill?.classList.add('connected');
+  else elements.bridgePill?.classList.remove('connected');
   if (online) elements.rconPill.classList.add('connected');
   else elements.rconPill.classList.remove('connected');
 
@@ -324,7 +336,7 @@ function updateStatus(data) {
     elements.infoGamemode.textContent = data.server.gamemode || '—';
   }
 
-  renderPlayerList(names);
+  renderPlayerList(names, data.players?.details);
   if (data.metrics?.tps) drawTpsChart(data.metrics.tps);
 }
 
@@ -332,8 +344,9 @@ function avatarUrl(name) {
   return `https://minotar.net/avatar/${encodeURIComponent(name)}/24`;
 }
 
-function renderPlayerList(names) {
+function renderPlayerList(names, details = []) {
   elements.playerList.innerHTML = '';
+  const detailMap = new Map((details || []).map((d) => [d.name, d]));
   if (!names.length) {
     const li = document.createElement('li');
     li.className = 'player-empty';
@@ -352,7 +365,9 @@ function renderPlayerList(names) {
     li.appendChild(img);
     const nameSpan = document.createElement('span');
     nameSpan.className = 'player-name';
-    nameSpan.textContent = name;
+    nameSpan.textContent = detailMap.has(name)
+      ? `${name} · ${detailMap.get(name).ping}ms`
+      : name;
     li.appendChild(nameSpan);
     const actions = document.createElement('div');
     actions.className = 'player-actions';
@@ -626,7 +641,10 @@ function connectWebSocket() {
       elements.logOutput.innerHTML = '';
       state.allLogLines = [];
       for (const line of data.lines) appendLogLine(line);
-    } else if (data.type === 'log' && !state.logsPaused) appendLogLine(data.line);
+    } else if (data.type === 'log' && !state.logsPaused) {
+      const bridgeType = data.event?.type;
+      const type = bridgeType === 'chat' ? 'chat' : bridgeType === 'death' || bridgeType === 'kick' ? 'warn' : bridgeType === 'join' || bridgeType === 'quit' ? 'player' : '';
+      appendLogLine(data.line, type);
     else if (data.type === 'system' && !state.logsPaused) appendLogLine(data.message, 'system');
     else if (data.type === 'error' && !state.logsPaused) appendLogLine(data.message, 'error');
     else if (data.type === 'player_event') {
@@ -635,6 +653,9 @@ function connectWebSocket() {
       playSound(data.event);
       refreshStatus();
     } else if (data.type === 'status') updateStatus(data);
+    else if (data.type === 'bridge_status') {
+      elements.bridgePill?.classList.toggle('connected', data.connected);
+    }
   };
 }
 

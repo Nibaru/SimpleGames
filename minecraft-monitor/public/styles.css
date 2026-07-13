@@ -898,6 +898,7 @@ body {
 .log-line.success { color: var(--log-success); }
 .log-line.system { color: var(--text-dim); font-style: italic; }
 .log-line.player { color: var(--purple); }
+.log-line.chat { color: #f8c255; }
 
 .log-time { color: var(--text-dim); }
 .log-thread { color: var(--text-muted); }

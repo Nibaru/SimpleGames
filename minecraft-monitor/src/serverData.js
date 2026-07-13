@@ -139,6 +139,7 @@ function listPlugins(serverDir) {
       const fullPath = path.join(pluginsDir, entry.name);
 
       if (entry.isDirectory()) {
+        if (entry.name === 'disabled') continue;
         const meta = readPluginYmlFromFolder(fullPath);
         const key = meta.name || entry.name;
         if (seen.has(key)) continue;

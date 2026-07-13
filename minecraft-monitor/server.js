@@ -11,6 +11,7 @@ const { LogTailer } = require('./src/logTailer');
 const { authMiddleware, login, authRequired } = require('./src/auth');
 const { MetricsStore } = require('./src/metrics');
 const { loadQuickCommands } = require('./src/quickCommands');
+const { BridgeClient, mapBridgeStatus } = require('./src/bridgeClient');
 
 const PORT = parseInt(process.env.PORT || '3000', 10);
 const SERVER_DIR = process.env.SERVER_DIR || '';
@@ -20,6 +21,8 @@ const RCON_PORT = parseInt(process.env.RCON_PORT || '25575', 10);
 const RCON_PASSWORD = process.env.RCON_PASSWORD || '';
 const LOG_HISTORY_LINES = parseInt(process.env.LOG_HISTORY_LINES || '500', 10);
 const DASHBOARD_PASSWORD = process.env.DASHBOARD_PASSWORD || '';
+const BRIDGE_URL = process.env.BRIDGE_URL || 'http://127.0.0.1:8765';
+const BRIDGE_API_KEY = process.env.BRIDGE_API_KEY || '';
 const QUICK_COMMANDS_FILE = process.env.QUICK_COMMANDS_FILE
   || path.join(__dirname, 'quick-commands.json');
 
@@ -39,6 +42,44 @@ const rcon = new RconService({
 });
 
 const metrics = new MetricsStore({ maxSamples: 120 });
+
+const bridge = new BridgeClient({ url: BRIDGE_URL, apiKey: BRIDGE_API_KEY });
+let bridgeAvailable = false;
+
+async function fetchCombinedStatus() {
+  if (bridge.isConfigured()) {
+    try {
+      const bridgeStatus = await bridge.getStatus();
+      bridgeAvailable = true;
+      const mapped = mapBridgeStatus(bridgeStatus, metrics.getHistory(bridgeStatus));
+      metrics.recordStatus(mapped);
+      return { ...mapped, bridgeConnected: true, source: 'bridge' };
+    } catch {
+      bridgeAvailable = false;
+    }
+  }
+
+  const status = await rcon.getStatus();
+  metrics.recordStatus(status);
+  return { ...status, bridgeConnected: false, source: 'rcon' };
+}
+
+function broadcast(data) {
+  const payload = JSON.stringify(data);
+  for (const client of wss.clients) {
+    if (client.readyState === client.OPEN) {
+      client.send(payload);
+    }
+  }
+}
+
+function formatBridgeLogLine(event) {
+  const time = event.timeFormatted || new Date(event.time).toTimeString().slice(0, 8);
+  const level = (event.level || 'info').toUpperCase();
+  const type = event.type || 'event';
+  const message = event.message || '';
+  return `[${time}] [MonitorBridge/${type}] [${level}] ${message}`;
+}
 
 let logTailer = null;
 
@@ -82,12 +123,28 @@ app.get('/api/config', (_req, res) => {
       confirm: confirm || null,
     })),
     serverDir: SERVER_DIR || null,
+    bridge: {
+      url: bridge.isConfigured() ? BRIDGE_URL : null,
+      configured: bridge.isConfigured(),
+      connected: bridgeAvailable,
+    },
   });
 });
 
+app.get('/api/bridge/health', async (_req, res) => {
+  if (!bridge.isConfigured()) {
+    return res.status(404).json({ error: 'BRIDGE_URL not configured' });
+  }
+  try {
+    const health = await bridge.health();
+    res.json({ connected: true, ...health });
+  } catch (err) {
+    res.status(502).json({ connected: false, error: err.message });
+  }
+});
+
 app.get('/api/status', async (_req, res) => {
-  const status = await rcon.getStatus();
-  metrics.recordStatus(status);
+  const status = await fetchCombinedStatus();
 
   const props = SERVER_DIR ? readServerProperties(SERVER_DIR) : null;
   const metricsData = metrics.getHistory(status);
@@ -96,22 +153,23 @@ app.get('/api/status', async (_req, res) => {
     ...status,
     logFile: LOG_FILE || null,
     logAvailable: Boolean(logTailer),
+    bridgeConnected: bridgeAvailable,
     server: props ? {
-      motd: props['motd'],
-      maxPlayers: props['max-players'],
+      motd: status.server?.motd || props['motd'],
+      maxPlayers: status.server?.maxPlayers || props['max-players'],
       gamemode: props['gamemode'],
       difficulty: props['difficulty'],
       pvp: props['pvp'],
       seed: props['level-seed'] || null,
       onlineMode: props['online-mode'],
       viewDistance: props['view-distance'],
-    } : null,
+    } : status.server || null,
     metrics: metricsData,
   });
 });
 
 app.get('/api/metrics', async (_req, res) => {
-  const status = await rcon.getStatus().catch(() => ({ online: false }));
+  const status = await fetchCombinedStatus().catch(() => ({ online: false }));
   res.json(metrics.getHistory(status));
 });
 
@@ -134,11 +192,20 @@ app.post('/api/rcon', async (req, res) => {
   }
 });
 
-app.get('/api/logs/history', (_req, res) => {
+app.get('/api/logs/history', async (_req, res) => {
+  if (bridge.isConfigured() && bridgeAvailable) {
+    try {
+      const data = await bridge.getLogs(500);
+      return res.json({ lines: data.lines || [], source: 'bridge', events: data.events });
+    } catch {
+      // fall through to file logs
+    }
+  }
+
   if (!logTailer) {
     return res.status(503).json({ error: 'Log file not configured. Set SERVER_DIR or LOG_FILE in .env' });
   }
-  res.json({ lines: logTailer.getHistory() });
+  res.json({ lines: logTailer.getHistory(), source: 'file' });
 });
 
 app.get('/api/logs/download', (_req, res) => {
@@ -172,6 +239,33 @@ app.get('/api/banned', (_req, res) => {
 });
 
 app.get('/api/plugins', async (_req, res) => {
+  if (bridge.isConfigured() && bridgeAvailable) {
+    try {
+      const data = await bridge.getPlugins();
+      const plugins = (data.plugins || []).map((p) => ({
+        id: p.name,
+        name: p.name,
+        file: p.name + '.jar',
+        type: 'jar',
+        version: p.version,
+        description: p.description,
+        authors: p.authors || [],
+        enabled: p.enabled,
+        loaded: p.enabled,
+        sizeLabel: '—',
+      }));
+      return res.json({
+        count: plugins.length,
+        enabledCount: plugins.filter((p) => p.enabled).length,
+        loadedCount: plugins.filter((p) => p.enabled).length,
+        source: 'bridge',
+        plugins,
+      });
+    } catch {
+      // fall through
+    }
+  }
+
   if (!SERVER_DIR) return res.status(404).json({ error: 'SERVER_DIR not configured' });
   const plugins = listPlugins(SERVER_DIR);
   if (plugins === null) return res.status(404).json({ error: 'Plugins folder not found' });
@@ -281,9 +375,19 @@ app.get('/api/content', async (_req, res) => {
 const server = http.createServer(app);
 const wss = new WebSocketServer({ server, path: '/ws' });
 
-wss.on('connection', (ws) => {
-  if (logTailer) {
-    ws.send(JSON.stringify({ type: 'history', lines: logTailer.getHistory() }));
+wss.on('connection', async (ws) => {
+  let bridgeHistorySent = false;
+
+  if (bridge.isConfigured() && bridgeAvailable) {
+    try {
+      const data = await bridge.getLogs(500);
+      ws.send(JSON.stringify({ type: 'history', lines: data.lines || [], source: 'bridge' }));
+      bridgeHistorySent = true;
+    } catch { /* ignore */ }
+  }
+
+  if (!bridgeHistorySent && logTailer) {
+    ws.send(JSON.stringify({ type: 'history', lines: logTailer.getHistory(), source: 'file' }));
 
     const unsubscribe = logTailer.subscribe((event) => {
       if (event.type === 'player_event') {
@@ -295,26 +399,65 @@ wss.on('connection', (ws) => {
     });
 
     ws.on('close', unsubscribe);
-  } else {
+  } else if (!bridgeHistorySent) {
     ws.send(JSON.stringify({
       type: 'system',
-      message: 'Log tailing unavailable — configure SERVER_DIR or LOG_FILE',
+      message: 'Log tailing unavailable — configure SERVER_DIR, LOG_FILE, or MonitorBridge plugin',
     }));
   }
 });
 
+bridge.on('event', (event) => {
+  const line = formatBridgeLogLine(event);
+  broadcast({ type: 'log', line, bridge: true, event });
+
+  if (event.type === 'join' || event.type === 'quit') {
+    metrics.recordPlayerEvent(event.type === 'join' ? 'join' : 'leave');
+    broadcast({
+      type: 'player_event',
+      event: event.type === 'join' ? 'join' : 'leave',
+      player: event.data?.player || event.message?.split(' ')[0] || 'Unknown',
+    });
+  }
+});
+
+bridge.on('connected', () => {
+  bridgeAvailable = true;
+  broadcast({ type: 'bridge_status', connected: true });
+  console.log('MonitorBridge connected — using live plugin data');
+});
+
+bridge.on('disconnected', () => {
+  bridgeAvailable = false;
+  broadcast({ type: 'bridge_status', connected: false });
+});
+
+if (bridge.isConfigured()) {
+  bridge.connectEvents();
+  bridge.health().then(() => {
+    bridgeAvailable = true;
+    console.log(`MonitorBridge detected at ${BRIDGE_URL}`);
+  }).catch(() => {
+    console.warn(`MonitorBridge not reachable at ${BRIDGE_URL} — using RCON/file fallback`);
+  });
+}
+
 setInterval(async () => {
   try {
-    const status = await rcon.getStatus();
-    metrics.recordStatus(status);
+    const status = await fetchCombinedStatus();
     const payload = JSON.stringify({
       type: 'status',
       ...status,
+      bridgeConnected: bridgeAvailable,
       metrics: metrics.getHistory(status),
       server: SERVER_DIR ? (() => {
         const props = readServerProperties(SERVER_DIR);
-        return props ? { motd: props['motd'], difficulty: props['difficulty'], gamemode: props['gamemode'] } : null;
-      })() : null,
+        return props ? {
+          motd: status.server?.motd || props['motd'],
+          difficulty: props['difficulty'],
+          gamemode: props['gamemode'],
+        } : status.server || null;
+      })() : status.server || null,
     });
     for (const client of wss.clients) {
       if (client.readyState === client.OPEN) {
@@ -337,6 +480,10 @@ server.listen(PORT, () => {
     console.log('Dashboard authentication is enabled.');
   }
 
+  if (bridge.isConfigured()) {
+    console.log(`MonitorBridge URL: ${BRIDGE_URL}`);
+  }
+
   if (!LOG_FILE) {
     console.warn('Warning: SERVER_DIR / LOG_FILE not set. Log tailing disabled.');
   } else if (!fs.existsSync(LOG_FILE)) {
@@ -347,6 +494,7 @@ server.listen(PORT, () => {
 });
 
 process.on('SIGINT', async () => {
+  bridge.stop();
   if (logTailer) await logTailer.stop();
   await rcon.close();
   process.exit(0);
