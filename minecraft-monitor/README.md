@@ -29,6 +29,15 @@ A web dashboard for monitoring **PaperMC** (and other Minecraft Java Edition) se
 - **Server version** — PaperMC / Minecraft version via RCON
 - **Server properties** — MOTD, gamemode, difficulty from `server.properties`
 
+### Plugins & Datapacks
+- **Plugins panel** — scans `plugins/` for JAR and folder plugins
+- Reads `plugin.yml` for version, authors, API version, description
+- **Running** status via RCON `plugins` command
+- **Datapacks panel** — scans `world/datapacks/` (uses `level-name`)
+- Parses `pack.mcmeta` for description, pack format, and namespaces
+- **Loaded** status via RCON `datapack list`
+- Search, reload data, and quick actions
+
 ### UI & UX
 - **3 themes** — Dark, Light, and Minecraft-inspired
 - **Tabbed navigation** — Overview, Players, Commands, Server panels
