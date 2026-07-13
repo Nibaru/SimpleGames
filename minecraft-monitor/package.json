@@ -1,0 +1,20 @@
+{
+  "name": "minecraft-monitor",
+  "version": "1.0.0",
+  "description": "Web dashboard for monitoring PaperMC servers — live logs, RCON terminal, and quick commands",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "license": "MIT",
+  "dependencies": {
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2",
+    "rcon-client": "^4.2.5",
+    "ws": "^8.18.0"
+  }
+}

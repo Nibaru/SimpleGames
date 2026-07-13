@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Minecraft Server Monitor</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="app">
+    <header class="header">
+      <div class="header-left">
+        <div class="logo">
+          <span class="logo-icon">⛏</span>
+          <h1>Server Monitor</h1>
+        </div>
+        <div class="status-badge" id="statusBadge">
+          <span class="status-dot"></span>
+          <span id="statusText">Connecting…</span>
+        </div>
+      </div>
+      <div class="header-stats">
+        <div class="stat">
+          <span class="stat-label">Players</span>
+          <span class="stat-value" id="playerCount">—</span>
+        </div>
+        <div class="stat">
+          <span class="stat-label">TPS</span>
+          <span class="stat-value" id="tpsValue">—</span>
+        </div>
+        <div class="stat">
+          <span class="stat-label">Log</span>
+          <span class="stat-value stat-value-sm" id="logPath">—</span>
+        </div>
+      </div>
+    </header>
+
+    <aside class="sidebar">
+      <section class="panel">
+        <h2 class="panel-title">Quick Commands</h2>
+        <div class="quick-commands" id="quickCommands"></div>
+      </section>
+
+      <section class="panel">
+        <h2 class="panel-title">Online Players</h2>
+        <ul class="player-list" id="playerList">
+          <li class="player-empty">No players online</li>
+        </ul>
+      </section>
+
+      <section class="panel panel-danger">
+        <h2 class="panel-title">Danger Zone</h2>
+        <button class="cmd-btn cmd-btn-danger" data-command="stop" data-confirm="Stop the server? This will disconnect all players.">
+          🛑 Stop Server
+        </button>
+      </section>
+    </aside>
+
+    <main class="main">
+      <section class="terminal-panel">
+        <div class="terminal-header">
+          <span class="terminal-title">📜 Server Logs</span>
+          <div class="terminal-actions">
+            <label class="toggle">
+              <input type="checkbox" id="autoScroll" checked>
+              Auto-scroll
+            </label>
+            <button class="btn-icon" id="clearLogs" title="Clear view">Clear</button>
+            <button class="btn-icon" id="pauseLogs" title="Pause/resume">Pause</button>
+          </div>
+        </div>
+        <div class="terminal-body" id="logOutput"></div>
+      </section>
+
+      <section class="terminal-panel">
+        <div class="terminal-header">
+          <span class="terminal-title">⌨ RCON Terminal</span>
+          <div class="terminal-actions">
+            <button class="btn-icon" id="clearRcon" title="Clear terminal">Clear</button>
+          </div>
+        </div>
+        <div class="terminal-body rcon-output" id="rconOutput"></div>
+        <form class="rcon-input-row" id="rconForm">
+          <span class="prompt">&gt;</span>
+          <input
+            type="text"
+            id="rconInput"
+            placeholder="Enter Minecraft command…"
+            autocomplete="off"
+            spellcheck="false"
+          >
+          <button type="submit" class="btn-send">Send</button>
+        </form>
+      </section>
+    </main>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
