@@ -69,7 +69,7 @@ public class ServerFilesService {
 
         for (File f : files) {
             if (f.getName().startsWith(".") || f.getName().equals("MonitorBridge")
-                    || f.getName().equals("ServerMonitor")) continue;
+                    || f.getName().equals("ServerMonitor") || f.getName().equals("Schellmonitor")) continue;
             if (f.isDirectory() && !f.getName().equals("disabled")) {
                 Map<String, Object> item = new LinkedHashMap<>();
                 item.put("name", f.getName());

@@ -1,5 +1,5 @@
-# ServerMonitor — all-in-one dashboard plugin
-# Build: mvn package  →  copy ServerMonitor-1.0.0.jar to plugins/
+# Schellmonitor — all-in-one dashboard plugin
+# Build: mvn package  →  copies Schellmonitor-1.0.0.jar to M:/AlgomaClusterServer/plugins
 # Open: http://127.0.0.1:8765
 
 http:

@@ -4,17 +4,17 @@ A web dashboard for **PaperMC** servers — live logs, server console, player li
 
 ## Recommended: single JAR deploy
 
-**You only need one file:** `ServerMonitor-1.0.0.jar`
+**You only need one file:** `Schellmonitor-1.0.0.jar`
 
 ```bash
 cd minecraft-monitor/bridge-plugin
 mvn package
-# Copy target/ServerMonitor-1.0.0.jar → your-server/plugins/
+# Or on Windows: build.bat  →  deploys to M:\AlgomaClusterServer\plugins
 ```
 
 Start the server, then open **http://127.0.0.1:8765**.
 
-Edit `plugins/ServerMonitor/config.yml` after first run:
+Edit `plugins/Schellmonitor/config.yml` after first run:
 
 ```yaml
 http:

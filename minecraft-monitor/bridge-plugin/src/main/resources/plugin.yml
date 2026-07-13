@@ -1,4 +1,4 @@
-name: ServerMonitor
+name: Schellmonitor
 version: ${project.version}
 main: games.twinhead.monitorbridge.MonitorBridgePlugin
 api-version: '1.21'

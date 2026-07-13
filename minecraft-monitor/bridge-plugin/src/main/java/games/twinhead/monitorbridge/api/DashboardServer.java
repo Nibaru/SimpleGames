@@ -80,7 +80,7 @@ public class DashboardServer {
             }
 
             if (path.equals("/health")) {
-                sendJson(exchange, 200, Map.of("ok", true, "plugin", "ServerMonitor"));
+                sendJson(exchange, 200, Map.of("ok", true, "plugin", "Schellmonitor"));
                 return;
             }
 

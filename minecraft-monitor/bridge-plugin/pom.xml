@@ -5,18 +5,21 @@
     <modelVersion>4.0.0</modelVersion>
 
     <groupId>games.twinhead</groupId>
-    <artifactId>ServerMonitor</artifactId>
+    <artifactId>Schellmonitor</artifactId>
     <version>1.0.0</version>
     <packaging>jar</packaging>
-    <name>ServerMonitor</name>
+    <name>Schellmonitor</name>
     <description>All-in-one PaperMC server monitor — web dashboard in a single plugin JAR</description>
 
     <properties>
         <java.version>17</java.version>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <!-- Override: mvn package -Ddeploy.dir=M:\AlgomaClusterServer\plugins -->
+        <deploy.dir>M:/AlgomaClusterServer/plugins</deploy.dir>
     </properties>
 
     <build>
+        <finalName>Schellmonitor-${project.version}</finalName>
         <plugins>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
@@ -26,6 +29,29 @@
                     <source>${java.version}</source>
                     <target>${java.version}</target>
                 </configuration>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-antrun-plugin</artifactId>
+                <version>3.1.0</version>
+                <executions>
+                    <execution>
+                        <id>deploy-jar</id>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>run</goal>
+                        </goals>
+                        <configuration>
+                            <target>
+                                <copy file="${project.build.directory}/${project.build.finalName}.jar"
+                                      todir="${deploy.dir}"
+                                      overwrite="true"
+                                      failonerror="false"/>
+                                <echo message="Built ${project.build.finalName}.jar (deploy dir: ${deploy.dir})"/>
+                            </target>
+                        </configuration>
+                    </execution>
+                </executions>
             </plugin>
         </plugins>
         <resources>

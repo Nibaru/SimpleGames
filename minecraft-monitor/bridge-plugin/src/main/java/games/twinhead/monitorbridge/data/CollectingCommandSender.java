@@ -53,12 +53,12 @@ public class CollectingCommandSender implements CommandSender {
 
     @Override
     public @NotNull Component name() {
-        return Component.text("ServerMonitor");
+        return Component.text("Schellmonitor");
     }
 
     @Override
     public @NotNull String getName() {
-        return "ServerMonitor";
+        return "Schellmonitor";
     }
 
     @Override

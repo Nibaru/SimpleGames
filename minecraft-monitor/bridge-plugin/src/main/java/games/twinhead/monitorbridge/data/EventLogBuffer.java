@@ -73,7 +73,7 @@ public class EventLogBuffer {
         String level = String.valueOf(event.getOrDefault("level", "INFO")).toUpperCase();
         String type = String.valueOf(event.getOrDefault("type", "event"));
         String message = String.valueOf(event.getOrDefault("message", ""));
-        return String.format("[%s] [MonitorBridge/%s] [%s] %s: %s", time, type, level, type, message);
+        return String.format("[%s] [Schellmonitor/%s] [%s] %s: %s", time, type, level, type, message);
     }
 
     public void subscribe(Consumer<Map<String, Object>> consumer) {

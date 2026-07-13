@@ -42,20 +42,20 @@ public final class MonitorBridgePlugin extends JavaPlugin {
                 dashboard = new DashboardServer(this, eventBuffer, statsService, filesService, auth);
                 dashboard.start();
                 int port = getConfig().getInt("http.port", 8765);
-                getLogger().info("ServerMonitor dashboard: http://"
+                getLogger().info("Schellmonitor dashboard: http://"
                         + getConfig().getString("http.host") + ":" + port);
             } catch (IOException e) {
                 getLogger().severe("Failed to start dashboard: " + e.getMessage());
             }
         }
 
-        statsService.logSystem("info", "ServerMonitor enabled");
+        statsService.logSystem("info", "Schellmonitor enabled");
     }
 
     @Override
     public void onDisable() {
         if (dashboard != null) dashboard.stop();
-        if (eventBuffer != null) eventBuffer.log("system", "info", "ServerMonitor disabled", null);
+        if (eventBuffer != null) eventBuffer.log("system", "info", "Schellmonitor disabled", null);
         instance = null;
     }
 
