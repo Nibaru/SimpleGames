@@ -125,7 +125,9 @@ npm run dev
 | GET | `/api/whitelist` | Whitelist player names |
 | GET | `/api/ops` | Operator list |
 | GET | `/api/banned` | Banned players with reasons |
-| GET | `/api/plugins` | Installed plugin JARs |
+| GET | `/api/plugins` | Plugin JARs/folders with metadata + RCON load state |
+| GET | `/api/datapacks` | World datapacks with pack.mcmeta + namespaces |
+| GET | `/api/content` | Combined plugins + datapacks in one request |
 | WS | `/ws` | Live log stream and status updates |
 
 ## Architecture

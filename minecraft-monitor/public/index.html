@@ -83,6 +83,7 @@
         <button class="nav-btn" data-panel="players" title="Players">👥</button>
         <button class="nav-btn" data-panel="commands" title="Commands">⚡</button>
         <button class="nav-btn" data-panel="server" title="Server">🖥</button>
+        <button class="nav-btn" data-panel="content" title="Plugins & Datapacks">📦</button>
       </nav>
 
       <aside class="side-panel" id="sidePanel">
@@ -169,17 +170,46 @@
         </div>
 
         <div class="panel-view" data-view="server">
-          <section class="panel">
-            <div class="panel-header-row">
-              <h2 class="panel-title">Plugins</h2>
-              <button class="btn-link" id="refreshPlugins">Refresh</button>
-            </div>
-            <div class="whitelist-meta" id="pluginsMeta">—</div>
-            <ul class="plugin-list" id="pluginList"></ul>
-          </section>
           <section class="panel panel-danger">
             <h2 class="panel-title">Danger Zone</h2>
             <button class="cmd-btn cmd-btn-danger btn-block" id="stopServerBtn">🛑 Stop Server</button>
+          </section>
+        </div>
+
+        <div class="panel-view" data-view="content">
+          <section class="panel content-panel">
+            <div class="content-tabs">
+              <button class="content-tab active" data-content-tab="plugins">🔌 Plugins</button>
+              <button class="content-tab" data-content-tab="datapacks">📦 Datapacks</button>
+            </div>
+
+            <div class="content-view active" data-content-view="plugins">
+              <div class="panel-header-row">
+                <div>
+                  <h2 class="panel-title">Plugins</h2>
+                  <p class="content-meta" id="pluginsMeta">—</p>
+                </div>
+                <button class="btn-link" id="refreshPlugins">Refresh</button>
+              </div>
+              <input type="search" class="cmd-search" id="pluginSearch" placeholder="Search plugins…">
+              <div class="content-list" id="pluginList"></div>
+            </div>
+
+            <div class="content-view" data-content-view="datapacks">
+              <div class="panel-header-row">
+                <div>
+                  <h2 class="panel-title">Datapacks</h2>
+                  <p class="content-meta" id="datapacksMeta">—</p>
+                </div>
+                <button class="btn-link" id="refreshDatapacks">Refresh</button>
+              </div>
+              <input type="search" class="cmd-search" id="datapackSearch" placeholder="Search datapacks…">
+              <div class="content-actions">
+                <button class="cmd-btn btn-block" id="reloadDatapacks">🔄 Reload data</button>
+                <button class="cmd-btn btn-block" id="listDatapacksRcon">📋 List loaded</button>
+              </div>
+              <div class="content-list" id="datapackList"></div>
+            </div>
           </section>
         </div>
       </aside>

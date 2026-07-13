@@ -54,7 +54,11 @@ const {
   readOps,
   readBannedPlayers,
   listPlugins,
+  listDatapacks,
   readServerProperties,
+  parseRconPluginList,
+  parseRconDatapackList,
+  mergePluginLoadState,
 } = require('./src/serverData');
 
 app.post('/api/login', (req, res) => {
@@ -167,11 +171,111 @@ app.get('/api/banned', (_req, res) => {
   res.json({ count: players.length, players });
 });
 
-app.get('/api/plugins', (_req, res) => {
+app.get('/api/plugins', async (_req, res) => {
   if (!SERVER_DIR) return res.status(404).json({ error: 'SERVER_DIR not configured' });
   const plugins = listPlugins(SERVER_DIR);
   if (plugins === null) return res.status(404).json({ error: 'Plugins folder not found' });
-  res.json({ count: plugins.length, plugins });
+
+  let loaded = [];
+  if (RCON_PASSWORD) {
+    try {
+      const output = await rcon.send('plugins');
+      loaded = parseRconPluginList(output);
+    } catch {
+      // RCON unavailable — file scan only
+    }
+  }
+
+  const enriched = mergePluginLoadState(plugins, loaded);
+  const enabledCount = enriched.filter((p) => p.enabled).length;
+  const loadedCount = enriched.filter((p) => p.loaded).length;
+
+  res.json({
+    count: enriched.length,
+    enabledCount,
+    loadedCount,
+    loaded,
+    plugins: enriched,
+  });
+});
+
+app.get('/api/datapacks', async (_req, res) => {
+  if (!SERVER_DIR) return res.status(404).json({ error: 'SERVER_DIR not configured' });
+  const result = listDatapacks(SERVER_DIR);
+  if (result.datapacks === null) {
+    return res.status(404).json({ error: `Datapacks folder not found for world "${result.world}"` });
+  }
+
+  let loaded = [];
+  if (RCON_PASSWORD) {
+    try {
+      const output = await rcon.send('datapack list');
+      loaded = parseRconDatapackList(output);
+    } catch {
+      // RCON unavailable
+    }
+  }
+
+  const loadedNames = new Set(loaded.filter((d) => d.enabled).map((d) => d.name.toLowerCase()));
+  const datapacks = result.datapacks.map((dp) => ({
+    ...dp,
+    loaded: loadedNames.has(dp.name.toLowerCase())
+      || [...loadedNames].some((n) => n.includes(dp.name.toLowerCase()) || dp.name.toLowerCase().includes(n)),
+  }));
+
+  res.json({
+    count: datapacks.length,
+    loadedCount: datapacks.filter((d) => d.loaded).length,
+    world: result.world,
+    path: result.path,
+    loaded,
+    datapacks,
+  });
+});
+
+app.get('/api/content', async (_req, res) => {
+  if (!SERVER_DIR) return res.status(404).json({ error: 'SERVER_DIR not configured' });
+
+  const plugins = listPlugins(SERVER_DIR) || [];
+  const datapackResult = listDatapacks(SERVER_DIR);
+  const datapacks = datapackResult.datapacks || [];
+
+  let pluginLoaded = [];
+  let datapackLoaded = [];
+  if (RCON_PASSWORD) {
+    try {
+      const [pluginsOut, datapacksOut] = await Promise.all([
+        rcon.send('plugins').catch(() => ''),
+        rcon.send('datapack list').catch(() => ''),
+      ]);
+      pluginLoaded = parseRconPluginList(pluginsOut);
+      datapackLoaded = parseRconDatapackList(datapacksOut);
+    } catch { /* ignore */ }
+  }
+
+  const loadedDpNames = new Set(datapackLoaded.filter((d) => d.enabled).map((d) => d.name.toLowerCase()));
+
+  res.json({
+    plugins: {
+      count: plugins.length,
+      enabledCount: plugins.filter((p) => p.enabled).length,
+      loadedCount: mergePluginLoadState(plugins, pluginLoaded).filter((p) => p.loaded).length,
+      items: mergePluginLoadState(plugins, pluginLoaded),
+    },
+    datapacks: {
+      count: datapacks.length,
+      world: datapackResult.world,
+      path: datapackResult.path,
+      loadedCount: datapacks.filter((dp) =>
+        loadedDpNames.has(dp.name.toLowerCase()),
+      ).length,
+      items: datapacks.map((dp) => ({
+        ...dp,
+        loaded: loadedDpNames.has(dp.name.toLowerCase())
+          || [...loadedDpNames].some((n) => n.includes(dp.name.toLowerCase())),
+      })),
+    },
+  });
 });
 
 const server = http.createServer(app);

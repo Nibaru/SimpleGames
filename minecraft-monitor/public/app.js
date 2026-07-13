@@ -33,6 +33,9 @@ const state = {
   restartTimer: null,
   allLogLines: [],
   quickCommandMap: new Map(),
+  plugins: [],
+  datapacks: [],
+  contentWorld: '',
   favorites: new Set(JSON.parse(localStorage.getItem(FAV_KEY) || '[]')),
   prefs: { theme: 'dark', logFontSize: 13, consoleFontSize: 13, soundEnabled: false, compactSidebar: false, ...JSON.parse(localStorage.getItem(PREFS_KEY) || '{}') },
   wsConnected: false,
@@ -51,7 +54,9 @@ function cacheElements() {
     'autoScroll', 'clearLogs', 'pauseLogs', 'clearRcon', 'downloadLogs', 'logSearch',
     'logFilters', 'broadcastForm', 'broadcastInput', 'whitelistList', 'whitelistMeta',
     'refreshWhitelist', 'refreshOps', 'refreshBanned', 'refreshPlugins', 'opsList', 'bannedList',
-    'pluginList', 'pluginsMeta', 'scheduleRestart', 'cancelRestart', 'restartDelay',
+    'pluginList', 'pluginsMeta', 'pluginSearch', 'datapackList', 'datapacksMeta',
+    'datapackSearch', 'refreshDatapacks', 'reloadDatapacks', 'listDatapacksRcon',
+    'scheduleRestart', 'cancelRestart', 'restartDelay',
     'stopServerBtn', 'toastContainer', 'tpsChart', 'commandSuggestions', 'cmdSearch',
     'infoVersion', 'infoDifficulty', 'infoGamemode', 'logStats', 'wsPill', 'rconPill',
     'themeToggle', 'settingsBtn', 'shortcutsBtn', 'settingsModal', 'shortcutsModal',
@@ -427,7 +432,7 @@ async function loadList(endpoint, listEl, metaEl, renderItem) {
     if (!res.ok) throw new Error(data.error);
     if (metaEl) metaEl.textContent = `${data.count} entries`;
     listEl.innerHTML = '';
-    const items = data.names || data.players || data.plugins || [];
+    const items = data.names || data.players || [];
     const preview = items.slice(0, 15);
     for (const item of preview) {
       const li = document.createElement('li');
@@ -444,6 +449,170 @@ async function loadList(endpoint, listEl, metaEl, renderItem) {
     if (metaEl) metaEl.textContent = 'Not available';
     listEl.innerHTML = '';
   }
+}
+
+function formatDate(iso) {
+  if (!iso) return '—';
+  const d = new Date(iso);
+  return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+}
+
+function renderPluginCard(plugin) {
+  const card = document.createElement('div');
+  card.className = 'content-card';
+
+  const badges = [];
+  if (plugin.loaded) badges.push('<span class="badge-pill loaded">Running</span>');
+  else if (plugin.enabled) badges.push('<span class="badge-pill">Installed</span>');
+  if (!plugin.enabled) badges.push('<span class="badge-pill disabled">Disabled</span>');
+  badges.push(`<span class="badge-pill type">${plugin.type}</span>`);
+
+  const authors = plugin.authors?.length ? plugin.authors.join(', ') : null;
+  const meta = [
+    plugin.version ? `v${plugin.version}` : null,
+    plugin.apiVersion ? `API ${plugin.apiVersion}` : null,
+    plugin.sizeLabel,
+    formatDate(plugin.modifiedAt),
+  ].filter(Boolean);
+
+  card.innerHTML = `
+    <div class="content-card-header">
+      <span class="content-card-title">${escapeHtml(plugin.name)}</span>
+      <div class="content-card-badges">${badges.join('')}</div>
+    </div>
+    ${plugin.description ? `<p class="content-card-desc">${escapeHtml(plugin.description)}</p>` : ''}
+    <div class="content-card-meta">
+      ${meta.map((m) => `<span>${escapeHtml(m)}</span>`).join('')}
+      ${authors ? `<span>${escapeHtml(authors)}</span>` : ''}
+    </div>
+    <div class="content-card-meta"><span>${escapeHtml(plugin.file)}</span></div>
+  `;
+
+  return card;
+}
+
+function renderDatapackCard(dp) {
+  const card = document.createElement('div');
+  card.className = 'content-card';
+
+  const badges = [];
+  if (dp.loaded) badges.push('<span class="badge-pill loaded">Loaded</span>');
+  badges.push(`<span class="badge-pill type">${dp.type}</span>`);
+  if (dp.packFormat != null) badges.push(`<span class="badge-pill">fmt ${dp.packFormat}</span>`);
+
+  const meta = [
+    dp.namespaceCount ? `${dp.namespaceCount} namespaces` : null,
+    dp.sizeLabel,
+    formatDate(dp.modifiedAt),
+  ].filter(Boolean);
+
+  const nsPreview = (dp.namespaces || []).slice(0, 6);
+  const nsMore = (dp.namespaces || []).length - nsPreview.length;
+
+  card.innerHTML = `
+    <div class="content-card-header">
+      <span class="content-card-title">${escapeHtml(dp.name)}</span>
+      <div class="content-card-badges">${badges.join('')}</div>
+    </div>
+    ${dp.description ? `<p class="content-card-desc">${escapeHtml(String(dp.description).replace(/§./g, ''))}</p>` : ''}
+    <div class="content-card-meta">${meta.map((m) => `<span>${escapeHtml(m)}</span>`).join('')}</div>
+    <div class="content-card-meta"><span>${escapeHtml(dp.file)}</span></div>
+    ${nsPreview.length ? `
+      <div class="content-card-namespaces">
+        ${nsPreview.map((ns) => `<span class="ns-tag">${escapeHtml(ns)}</span>`).join('')}
+        ${nsMore > 0 ? `<span class="ns-tag">+${nsMore}</span>` : ''}
+      </div>
+    ` : ''}
+  `;
+
+  return card;
+}
+
+function renderPlugins(filter = '') {
+  const q = filter.toLowerCase();
+  const list = state.plugins.filter((p) =>
+    !q
+    || p.name.toLowerCase().includes(q)
+    || p.file.toLowerCase().includes(q)
+    || p.description?.toLowerCase().includes(q),
+  );
+
+  elements.pluginList.innerHTML = '';
+  if (!list.length) {
+    elements.pluginList.innerHTML = '<p class="content-empty">No plugins found</p>';
+    return;
+  }
+  for (const plugin of list) {
+    elements.pluginList.appendChild(renderPluginCard(plugin));
+  }
+}
+
+function renderDatapacks(filter = '') {
+  const q = filter.toLowerCase();
+  const list = state.datapacks.filter((dp) =>
+    !q
+    || dp.name.toLowerCase().includes(q)
+    || dp.file.toLowerCase().includes(q)
+    || dp.description?.toLowerCase().includes(q)
+    || dp.namespaces?.some((ns) => ns.toLowerCase().includes(q)),
+  );
+
+  elements.datapackList.innerHTML = '';
+  if (!list.length) {
+    elements.datapackList.innerHTML = '<p class="content-empty">No datapacks found</p>';
+    return;
+  }
+  for (const dp of list) {
+    elements.datapackList.appendChild(renderDatapackCard(dp));
+  }
+}
+
+async function loadPlugins() {
+  try {
+    const res = await apiFetch('/api/plugins');
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error);
+
+    state.plugins = data.plugins || [];
+    const loaded = data.loadedCount ?? state.plugins.filter((p) => p.loaded).length;
+    const enabled = data.enabledCount ?? state.plugins.filter((p) => p.enabled).length;
+    elements.pluginsMeta.textContent = `${data.count} total · ${enabled} enabled · ${loaded} running`;
+    renderPlugins(elements.pluginSearch?.value || '');
+  } catch {
+    state.plugins = [];
+    elements.pluginsMeta.textContent = 'Not available — check SERVER_DIR';
+    elements.pluginList.innerHTML = '<p class="content-empty">Could not load plugins</p>';
+  }
+}
+
+async function loadDatapacks() {
+  try {
+    const res = await apiFetch('/api/datapacks');
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error);
+
+    state.datapacks = data.datapacks || [];
+    state.contentWorld = data.world || '';
+    const loaded = data.loadedCount ?? state.datapacks.filter((d) => d.loaded).length;
+    elements.datapacksMeta.textContent = `${data.count} in world "${data.world}" · ${loaded} loaded`;
+    renderDatapacks(elements.datapackSearch?.value || '');
+  } catch {
+    state.datapacks = [];
+    elements.datapacksMeta.textContent = 'Not available — check world folder';
+    elements.datapackList.innerHTML = '<p class="content-empty">Could not load datapacks</p>';
+  }
+}
+
+function setupContentTabs() {
+  $$('.content-tab').forEach((tab) => {
+    tab.addEventListener('click', () => {
+      $$('.content-tab').forEach((t) => t.classList.remove('active'));
+      $$('.content-view').forEach((v) => v.classList.remove('active'));
+      tab.classList.add('active');
+      $(`.content-view[data-content-view="${tab.dataset.contentTab}"]`)?.classList.add('active');
+      if (tab.dataset.contentTab === 'datapacks' && !state.datapacks.length) loadDatapacks();
+    });
+  });
 }
 
 function connectWebSocket() {
@@ -634,6 +803,7 @@ async function init() {
   setupSplitter();
   setupNav();
   setupWorkspaceTabs();
+  setupContentTabs();
 
   const configRes = await apiFetch('/api/config').catch(() => null);
   if (!configRes) { showLogin(); return; }
@@ -649,7 +819,7 @@ async function init() {
   await loadList('/api/whitelist', elements.whitelistList, elements.whitelistMeta, (li, name) => { li.textContent = name; });
   await loadList('/api/ops', elements.opsList, null, (li, name) => { li.textContent = name; });
   await loadList('/api/banned', elements.bannedList, null, (li, p) => { li.textContent = p.reason ? `${p.name} — ${p.reason}` : p.name; });
-  await loadList('/api/plugins', elements.pluginList, elements.pluginsMeta, (li, p) => { li.textContent = p.name; });
+  await loadPlugins();
   setInterval(refreshStatus, 15000);
 }
 
@@ -729,7 +899,22 @@ function bindEvents() {
   elements.refreshWhitelist.addEventListener('click', () => loadList('/api/whitelist', elements.whitelistList, elements.whitelistMeta, (li, n) => { li.textContent = n; }));
   elements.refreshOps.addEventListener('click', () => loadList('/api/ops', elements.opsList, null, (li, n) => { li.textContent = n; }));
   elements.refreshBanned.addEventListener('click', () => loadList('/api/banned', elements.bannedList, null, (li, p) => { li.textContent = p.name; }));
-  elements.refreshPlugins.addEventListener('click', () => loadList('/api/plugins', elements.pluginList, elements.pluginsMeta, (li, p) => { li.textContent = p.name; }));
+  elements.refreshPlugins.addEventListener('click', loadPlugins);
+  elements.refreshDatapacks.addEventListener('click', loadDatapacks);
+  elements.pluginSearch?.addEventListener('input', (e) => renderPlugins(e.target.value));
+  elements.datapackSearch?.addEventListener('input', (e) => renderDatapacks(e.target.value));
+
+  elements.reloadDatapacks?.addEventListener('click', async () => {
+    if (!confirm('Reload server data (datapacks, functions, loot tables)? This may cause lag.')) return;
+    await sendRcon('reload confirm');
+    showToast('Reload initiated', 'warn');
+    setTimeout(loadDatapacks, 3000);
+  });
+
+  elements.listDatapacksRcon?.addEventListener('click', async () => {
+    const response = await sendRcon('datapack list');
+    if (response) showToast('Datapack list sent to console', 'info');
+  });
 
   elements.scheduleRestart.addEventListener('click', scheduleRestart);
   elements.cancelRestart.addEventListener('click', () => {
