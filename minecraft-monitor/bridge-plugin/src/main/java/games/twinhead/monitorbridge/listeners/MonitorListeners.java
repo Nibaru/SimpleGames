@@ -15,6 +15,7 @@ import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerKickEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.event.server.ServerLoadEvent;
+import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer;
 
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -56,7 +57,11 @@ public class MonitorListeners implements Listener {
     public void onQuit(PlayerQuitEvent event) {
         Player player = event.getPlayer();
         Map<String, Object> data = playerData(player);
-        data.put("reason", event.getQuitReason() != null ? event.getQuitReason().toString() : "Disconnected");
+        String reason = "Disconnected";
+        if (event.quitMessage() != null) {
+            reason = PlainTextComponentSerializer.plainText().serialize(event.quitMessage());
+        }
+        data.put("reason", reason);
         buffer.log("quit", "info", player.getName() + " left the game", data);
     }
 
@@ -95,9 +100,7 @@ public class MonitorListeners implements Listener {
     @EventHandler(priority = EventPriority.MONITOR)
     public void onKick(PlayerKickEvent event) {
         Map<String, Object> data = playerData(event.getPlayer());
-        data.put("reason", event.getReason() != null
-                ? net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer.plainText()
-                    .serialize(event.getReason()) : "Kicked");
+        data.put("reason", event.getReason() != null ? event.getReason() : "Kicked");
         buffer.log("kick", "warn", event.getPlayer().getName() + " was kicked", data);
     }
 

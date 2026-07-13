@@ -1,36 +1,41 @@
-# MonitorBridge — PaperMC plugin for the web monitor
+# ServerMonitor — single-file PaperMC dashboard
 
-This plugin runs **on your Minecraft server** and exposes live data to the web dashboard over HTTP.
+One JAR. Drop it in `plugins/`, start the server, open the dashboard. No Node.js, no RCON, no separate monitor process.
 
-## What it provides
+## Quick start
 
-- **Accurate TPS / MSPT** from Paper (no RCON guessing)
-- **Player list** with ping, gamemode, health, world
-- **Structured event logs** — joins, quits, chat, deaths, commands, kicks, advancements
-- **Live event stream** (SSE) to the web monitor
-- **Plugin list** with versions from the running server
-
-## Build
-
-Requires Java 17+ and Maven:
+### 1. Build (or download from releases)
 
 ```bash
-cd bridge-plugin
+cd minecraft-monitor/bridge-plugin
 mvn package
 ```
 
-Copy `target/MonitorBridge-1.0.0.jar` to your server's `plugins/` folder.
+Copy `target/ServerMonitor-1.0.0.jar` to your Paper server's `plugins/` folder.
 
-## Configure the plugin
+### 2. Start the server
 
-After first run, edit `plugins/MonitorBridge/config.yml`:
+On first run the plugin creates `plugins/ServerMonitor/config.yml`. Restart after editing.
+
+### 3. Open the dashboard
+
+Default URL: **http://127.0.0.1:8765**
+
+If you set an API key or dashboard password in config, sign in with that value.
+
+## Configure
+
+`plugins/ServerMonitor/config.yml`:
 
 ```yaml
 http:
   enabled: true
-  host: 127.0.0.1      # keep on localhost — only the monitor should connect
+  host: 127.0.0.1    # keep localhost — use SSH tunnel for remote access
   port: 8765
   api-key: your-secret-key-here
+
+dashboard:
+  password: ""       # optional extra password for the web UI
 
 events:
   buffer-size: 2000
@@ -39,35 +44,52 @@ events:
   log-deaths: true
 ```
 
-Restart the server after changing the config.
+**Security:** bind to `127.0.0.1`, set a strong `api-key`, and do not expose port 8765 to the public internet.
 
-## Configure the web monitor
+### Remote access (SSH tunnel)
 
-In `minecraft-monitor/.env`:
-
-```env
-SERVER_DIR=..
-BRIDGE_URL=http://127.0.0.1:8765
-BRIDGE_API_KEY=your-secret-key-here
+```bash
+ssh -L 8765:127.0.0.1:8765 user@your-server
 ```
 
-The API key must match `http.api-key` in the plugin config.
+Then open http://localhost:8765 on your machine.
 
-## API endpoints (plugin)
+## What's included in the JAR
 
-| Endpoint | Description |
-|----------|-------------|
-| `GET /health` | Plugin health check |
-| `GET /api/status` | TPS, MSPT, players, memory, worlds |
-| `GET /api/players` | Online players with details |
-| `GET /api/plugins` | Loaded plugins |
-| `GET /api/logs?limit=200` | Structured event history |
-| `GET /api/events` | SSE live event stream |
+| Component | Description |
+|-----------|-------------|
+| Web dashboard | HTML/CSS/JS served from the plugin |
+| Live stats | TPS, MSPT, players, memory, worlds |
+| Event logs | Joins, quits, chat, deaths, commands, kicks |
+| Server console | Commands run in-process via Bukkit (no RCON) |
+| File readers | Whitelist, ops, banned, plugins, datapacks, `latest.log` |
 
-Auth header: `Authorization: Bearer your-api-key`
+## API endpoints
 
-## Security
+| Endpoint | Auth | Description |
+|----------|------|-------------|
+| `GET /` | No | Dashboard UI |
+| `GET /api/config` | No | Auth flags and quick commands |
+| `POST /api/login` | No | Sign in (API key or dashboard password) |
+| `GET /health` | No | Health check |
+| `GET /api/status` | Yes | TPS, MSPT, players, memory |
+| `GET /api/events` | Yes | SSE live event stream |
+| `POST /api/command` | Yes | Run a server command |
+| `GET /api/plugins` | Yes | Loaded + file plugins |
+| `GET /api/datapacks` | Yes | World datapacks |
+| `GET /api/whitelist` | Yes | Whitelist names |
+| `GET /api/ops` | Yes | Operator list |
+| `GET /api/banned` | Yes | Banned players |
+| `GET /api/logs` | Yes | Recent structured events |
+| `GET /api/logs/download` | Yes | Download `latest.log` |
 
-- Bind to `127.0.0.1` only (default)
-- Set a strong `api-key`
-- Do not expose port 8765 to the internet
+Auth: `Authorization: Bearer <api-key-or-session-token>`, `X-Api-Key` header, or `?apiKey=` query param (used by SSE).
+
+## Requirements
+
+- Paper 1.21+ (or compatible fork)
+- Java 17+
+
+## Legacy Node.js monitor
+
+The `minecraft-monitor/` Node app is kept for development and optional external hosting. For production on your game server, use this plugin only — it replaces Node, RCON tailing, and the old MonitorBridge split setup.

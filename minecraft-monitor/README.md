@@ -1,199 +1,92 @@
 # Minecraft Server Monitor
 
-A web dashboard for monitoring **PaperMC** (and other Minecraft Java Edition) servers. View live server logs, run RCON commands from a terminal, and trigger common admin actions with one click.
+A web dashboard for **PaperMC** servers — live logs, server console, player list, plugins, datapacks, and admin quick actions.
 
-![Node.js](https://img.shields.io/badge/node-%3E%3D18-brightgreen)
+## Recommended: single JAR deploy
 
-## Features
-
-### Monitoring
-- **Live log viewer** — tails `logs/latest.log` in real time via WebSocket
-- **Log filtering** — search text and filter by info / warn / error / player events
-- **Syntax highlighting** — parses Minecraft log timestamps and log levels
-- **Download logs** — grab the current log file from the dashboard
-- **Join/leave toasts** — notifications when players connect or disconnect
-
-### Server Control
-- **RCON terminal** — send any server command with command history (↑↓) and Tab suggestions
-- **Quick command buttons** — save world, difficulty, time/weather, TPS, GC, and more
-- **Custom commands** — add your own buttons via `quick-commands.json`
-- **Broadcast** — send a `say` message to all players
-- **Player actions** — message, kick, ban, or op players from the sidebar
-- **Scheduled restart** — countdown with in-game warnings, then `stop`
-- **Whitelist viewer** — reads `whitelist.json` from your server directory
-
-### Status & Metrics
-- **Live status** — online/offline, player count, TPS, MSPT
-- **TPS chart** — sparkline of recent performance
-- **Peak players** — session peak player count
-- **Server version** — PaperMC / Minecraft version via RCON
-- **Server properties** — MOTD, gamemode, difficulty from `server.properties`
-
-### Plugins & Datapacks
-- **Plugins panel** — scans `plugins/` for JAR and folder plugins
-- Reads `plugin.yml` for version, authors, API version, description
-- **Running** status via RCON `plugins` command
-- **Datapacks panel** — scans `world/datapacks/` (uses `level-name`)
-- Parses `pack.mcmeta` for description, pack format, and namespaces
-- **Loaded** status via RCON `datapack list`
-- Search, reload data, and quick actions
-
-### UI & UX
-- **3 themes** — Dark, Light, and Minecraft-inspired
-- **Tabbed navigation** — Overview, Players, Commands, Server, Content panels
-- **Health score ring** — computed from TPS and MSPT
-- **TPS sparkline** — with gradient fill in header
-- **Command palette** — Ctrl+K fuzzy search for commands
-- **Favorite commands** — star quick commands to pin them
-- **Player avatars** — Minecraft heads via Minotar
-- **Resizable split pane** — drag to resize logs vs console
-- **Workspace tabs** — Logs-only, Console-only, or Split view
-- **Fullscreen logs** — expand log panel
-- **Click-to-copy** log lines
-- **Keyboard shortcuts** — `/` filter, `` ` `` console, `?` help
-- **Settings panel** — font sizes, sounds, compact sidebar
-- **Connection pills** — live Logs/RCON status indicators
-
-### Security
-- **Optional dashboard password** — session-based auth via `DASHBOARD_PASSWORD`
-
-## Requirements
-
-- Node.js 18+
-- A running PaperMC server with **RCON enabled**
-- The monitor must be able to read the server log file (run on the same machine, or mount the server directory)
-
-## MonitorBridge Plugin (recommended)
-
-For the best experience, install the **MonitorBridge** Paper plugin included in `bridge-plugin/`.
+**You only need one file:** `ServerMonitor-1.0.0.jar`
 
 ```bash
-cd bridge-plugin
+cd minecraft-monitor/bridge-plugin
 mvn package
-# Copy target/MonitorBridge-1.0.0.jar to your server's plugins/ folder
+# Copy target/ServerMonitor-1.0.0.jar → your-server/plugins/
 ```
 
-Set the same API key in both places:
+Start the server, then open **http://127.0.0.1:8765**.
 
-**plugins/MonitorBridge/config.yml**
+Edit `plugins/ServerMonitor/config.yml` after first run:
+
 ```yaml
 http:
+  host: 127.0.0.1
+  port: 8765
   api-key: your-secret-key
 ```
 
-**minecraft-monitor/.env**
+Full docs: [bridge-plugin/README.md](bridge-plugin/README.md)
+
+### Why the plugin?
+
+| | Plugin (recommended) | Node.js monitor (legacy) |
+|--|----------------------|--------------------------|
+| Deploy | One JAR in `plugins/` | Node 18+, `npm install`, separate process |
+| Commands | In-process (Bukkit) | RCON required |
+| TPS / players | Direct from Paper API | RCON or bridge polling |
+| Logs | Structured events + `latest.log` | Tail `logs/latest.log` |
+
+---
+
+## Legacy: Node.js monitor
+
+The Node app in this folder still works if you want to run the dashboard on a different machine or without the plugin. It requires RCON and optionally the plugin as a bridge.
+
+### Requirements
+
+- Node.js 18+
+- RCON enabled on the server
+- Read access to server files (same machine or mounted directory)
+
+### Setup
+
+```bash
+cd minecraft-monitor
+cp .env.example .env
+# Edit .env — set SERVER_DIR, RCON_*, optional DASHBOARD_PASSWORD
+npm install
+npm start
+```
+
+Open **http://localhost:3000**.
+
+### With MonitorBridge plugin (optional)
+
+If you also install the plugin, set in `.env`:
+
 ```env
 BRIDGE_URL=http://127.0.0.1:8765
 BRIDGE_API_KEY=your-secret-key
 ```
 
-The monitor will automatically use the bridge for live TPS, player ping, structured logs (chat, deaths, commands), and plugin data. RCON is still used for sending commands.
+The Node app will use the plugin for live stats and structured logs; RCON is still used for commands.
 
-See [bridge-plugin/README.md](bridge-plugin/README.md) for full details.
+---
 
-## Setup
+## Features
 
-### 1. Enable RCON on your PaperMC server
+- **Live log viewer** with filtering, search, and download
+- **Server console** — command history, suggestions, command palette (Ctrl+K)
+- **Quick commands** — save, weather, time, TPS, whitelist, and custom buttons
+- **Player sidebar** — kick, ban, op, message actions
+- **TPS / MSPT chart** and health score
+- **Plugins & datapacks** panels
+- **Whitelist / ops / banned** viewers
+- **Broadcast** and scheduled restart
+- **3 themes** — dark, light, minecraft
+- **Optional auth** — API key and/or dashboard password
 
-Edit `server.properties`:
+## Security
 
-```properties
-enable-rcon=true
-rcon.port=25575
-rcon.password=your-secure-password
-```
-
-Restart the server after changing these values.
-
-### 2. Configure the monitor
-
-```bash
-cd minecraft-monitor
-cp .env.example .env
-```
-
-Edit `.env`:
-
-```env
-PORT=3000
-SERVER_DIR=/path/to/your/paper-server
-RCON_HOST=127.0.0.1
-RCON_PORT=25575
-RCON_PASSWORD=your-secure-password
-DASHBOARD_PASSWORD=your-dashboard-password   # optional but recommended
-```
-
-If your log file is in a non-standard location, set `LOG_FILE` directly instead of `SERVER_DIR`.
-
-### 3. Custom quick commands (optional)
-
-```bash
-cp quick-commands.example.json quick-commands.json
-# Edit quick-commands.json, then set in .env:
-# QUICK_COMMANDS_FILE=./quick-commands.json
-```
-
-### 4. Install and run
-
-```bash
-npm install
-npm start
-```
-
-Open **http://localhost:3000** in your browser.
-
-For development with auto-restart on file changes:
-
-```bash
-npm run dev
-```
-
-## API Endpoints
-
-| Method | Path | Description |
-|--------|------|-------------|
-| POST | `/api/login` | Authenticate (when `DASHBOARD_PASSWORD` is set) |
-| GET | `/api/config` | Dashboard configuration |
-| GET | `/api/status` | Server status, TPS, players, metrics |
-| GET | `/api/metrics` | TPS history and peak players |
-| POST | `/api/rcon` | Send an RCON command |
-| GET | `/api/logs/history` | Recent log lines |
-| GET | `/api/logs/download` | Download the log file |
-| GET | `/api/whitelist` | Whitelist player names |
-| GET | `/api/ops` | Operator list |
-| GET | `/api/banned` | Banned players with reasons |
-| GET | `/api/plugins` | Plugin JARs/folders with metadata + RCON load state |
-| GET | `/api/datapacks` | World datapacks with pack.mcmeta + namespaces |
-| GET | `/api/content` | Combined plugins + datapacks in one request |
-| WS | `/ws` | Live log stream and status updates |
-
-## Architecture
-
-```
-minecraft-monitor/
-├── server.js              # Express + WebSocket server
-├── src/
-│   ├── auth.js            # Optional session auth
-│   ├── metrics.js         # TPS history store
-│   ├── quickCommands.js   # Default + custom commands
-│   ├── rcon.js            # RCON client wrapper
-│   └── logTailer.js       # Log file tailing + player events
-└── public/
-    ├── index.html
-    ├── styles.css
-    └── app.js
-```
-
-## Security Notes
-
-This dashboard can stop your server and run arbitrary commands via RCON. **Do not expose it to the public internet** without authentication and a reverse proxy (e.g. nginx with basic auth or VPN-only access).
-
-Recommended:
-
-- Set `DASHBOARD_PASSWORD` in production
-- Bind to localhost only, or put behind a reverse proxy with auth
-- Use a strong RCON password
-- Run the monitor on the same trusted network as your server
+This dashboard can stop your server and run arbitrary commands. Do not expose it to the public internet without authentication. Bind to localhost or use an SSH tunnel / reverse proxy with auth.
 
 ## License
 

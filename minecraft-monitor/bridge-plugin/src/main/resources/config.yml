@@ -1,18 +1,19 @@
-# MonitorBridge — connects your PaperMC server to the web monitor
-# Build the JAR with: mvn package
-# Drop MonitorBridge-1.0.0.jar into plugins/ and restart
+# ServerMonitor — all-in-one dashboard plugin
+# Build: mvn package  →  copy ServerMonitor-1.0.0.jar to plugins/
+# Open: http://127.0.0.1:8765
 
 http:
   enabled: true
   host: 127.0.0.1
   port: 8765
-  # API key — must match BRIDGE_API_KEY in the monitor .env
   api-key: change-me-to-a-secret-key
 
+dashboard:
+  # Optional extra password for the web UI (in addition to api-key)
+  password: ""
+
 events:
-  # Max structured events kept in memory
   buffer-size: 2000
-  # Event types: join, quit, chat, death, command, gamemode, kick, achievement
   log-chat: true
   log-commands: true
   log-deaths: true
