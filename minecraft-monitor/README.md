@@ -29,6 +29,22 @@ A web dashboard for monitoring **PaperMC** (and other Minecraft Java Edition) se
 - **Server version** — PaperMC / Minecraft version via RCON
 - **Server properties** — MOTD, gamemode, difficulty from `server.properties`
 
+### UI & UX
+- **3 themes** — Dark, Light, and Minecraft-inspired
+- **Tabbed navigation** — Overview, Players, Commands, Server panels
+- **Health score ring** — computed from TPS and MSPT
+- **TPS sparkline** — with gradient fill in header
+- **Command palette** — Ctrl+K fuzzy search for commands
+- **Favorite commands** — star quick commands to pin them
+- **Player avatars** — Minecraft heads via Minotar
+- **Resizable split pane** — drag to resize logs vs console
+- **Workspace tabs** — Logs-only, Console-only, or Split view
+- **Fullscreen logs** — expand log panel
+- **Click-to-copy** log lines
+- **Keyboard shortcuts** — `/` filter, `` ` `` console, `?` help
+- **Settings panel** — font sizes, sounds, compact sidebar
+- **Connection pills** — live Logs/RCON status indicators
+
 ### Security
 - **Optional dashboard password** — session-based auth via `DASHBOARD_PASSWORD`
 
@@ -107,6 +123,9 @@ npm run dev
 | GET | `/api/logs/history` | Recent log lines |
 | GET | `/api/logs/download` | Download the log file |
 | GET | `/api/whitelist` | Whitelist player names |
+| GET | `/api/ops` | Operator list |
+| GET | `/api/banned` | Banned players with reasons |
+| GET | `/api/plugins` | Installed plugin JARs |
 | WS | `/ws` | Live log stream and status updates |
 
 ## Architecture

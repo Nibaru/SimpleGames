@@ -49,39 +49,13 @@ if (LOG_FILE) {
   });
 }
 
-function readWhitelist() {
-  if (!SERVER_DIR) return null;
-  const file = path.join(SERVER_DIR, 'whitelist.json');
-  if (!fs.existsSync(file)) return null;
-
-  try {
-    const data = JSON.parse(fs.readFileSync(file, 'utf8'));
-    return Array.isArray(data) ? data.map((entry) => entry.name).filter(Boolean) : null;
-  } catch {
-    return null;
-  }
-}
-
-function readServerProperties() {
-  if (!SERVER_DIR) return null;
-  const file = path.join(SERVER_DIR, 'server.properties');
-  if (!fs.existsSync(file)) return null;
-
-  try {
-    const content = fs.readFileSync(file, 'utf8');
-    const props = {};
-    for (const line of content.split('\n')) {
-      const trimmed = line.trim();
-      if (!trimmed || trimmed.startsWith('#')) continue;
-      const idx = trimmed.indexOf('=');
-      if (idx === -1) continue;
-      props[trimmed.slice(0, idx).trim()] = trimmed.slice(idx + 1).trim();
-    }
-    return props;
-  } catch {
-    return null;
-  }
-}
+const {
+  readWhitelist,
+  readOps,
+  readBannedPlayers,
+  listPlugins,
+  readServerProperties,
+} = require('./src/serverData');
 
 app.post('/api/login', (req, res) => {
   const result = login(DASHBOARD_PASSWORD, req.body?.password || '');
@@ -111,7 +85,9 @@ app.get('/api/status', async (_req, res) => {
   const status = await rcon.getStatus();
   metrics.recordStatus(status);
 
-  const props = readServerProperties();
+  const props = SERVER_DIR ? readServerProperties(SERVER_DIR) : null;
+  const metricsData = metrics.getHistory(status);
+
   res.json({
     ...status,
     logFile: LOG_FILE || null,
@@ -123,13 +99,16 @@ app.get('/api/status', async (_req, res) => {
       difficulty: props['difficulty'],
       pvp: props['pvp'],
       seed: props['level-seed'] || null,
+      onlineMode: props['online-mode'],
+      viewDistance: props['view-distance'],
     } : null,
-    metrics: metrics.getHistory(),
+    metrics: metricsData,
   });
 });
 
-app.get('/api/metrics', (_req, res) => {
-  res.json(metrics.getHistory());
+app.get('/api/metrics', async (_req, res) => {
+  const status = await rcon.getStatus().catch(() => ({ online: false }));
+  res.json(metrics.getHistory(status));
 });
 
 app.post('/api/rcon', async (req, res) => {
@@ -166,11 +145,33 @@ app.get('/api/logs/download', (_req, res) => {
 });
 
 app.get('/api/whitelist', (_req, res) => {
-  const names = readWhitelist();
+  if (!SERVER_DIR) return res.status(404).json({ error: 'SERVER_DIR not configured' });
+  const names = readWhitelist(SERVER_DIR);
   if (names === null) {
     return res.status(404).json({ error: 'Whitelist file not found' });
   }
   res.json({ count: names.length, names });
+});
+
+app.get('/api/ops', (_req, res) => {
+  if (!SERVER_DIR) return res.status(404).json({ error: 'SERVER_DIR not configured' });
+  const names = readOps(SERVER_DIR);
+  if (names === null) return res.status(404).json({ error: 'Ops file not found' });
+  res.json({ count: names.length, names });
+});
+
+app.get('/api/banned', (_req, res) => {
+  if (!SERVER_DIR) return res.status(404).json({ error: 'SERVER_DIR not configured' });
+  const players = readBannedPlayers(SERVER_DIR);
+  if (players === null) return res.status(404).json({ error: 'Banned players file not found' });
+  res.json({ count: players.length, players });
+});
+
+app.get('/api/plugins', (_req, res) => {
+  if (!SERVER_DIR) return res.status(404).json({ error: 'SERVER_DIR not configured' });
+  const plugins = listPlugins(SERVER_DIR);
+  if (plugins === null) return res.status(404).json({ error: 'Plugins folder not found' });
+  res.json({ count: plugins.length, plugins });
 });
 
 const server = http.createServer(app);
@@ -181,6 +182,9 @@ wss.on('connection', (ws) => {
     ws.send(JSON.stringify({ type: 'history', lines: logTailer.getHistory() }));
 
     const unsubscribe = logTailer.subscribe((event) => {
+      if (event.type === 'player_event') {
+        metrics.recordPlayerEvent(event.event);
+      }
       if (ws.readyState === ws.OPEN) {
         ws.send(JSON.stringify(event));
       }
@@ -199,7 +203,15 @@ setInterval(async () => {
   try {
     const status = await rcon.getStatus();
     metrics.recordStatus(status);
-    const payload = JSON.stringify({ type: 'status', ...status, metrics: metrics.getHistory() });
+    const payload = JSON.stringify({
+      type: 'status',
+      ...status,
+      metrics: metrics.getHistory(status),
+      server: SERVER_DIR ? (() => {
+        const props = readServerProperties(SERVER_DIR);
+        return props ? { motd: props['motd'], difficulty: props['difficulty'], gamemode: props['gamemode'] } : null;
+      })() : null,
+    });
     for (const client of wss.clients) {
       if (client.readyState === client.OPEN) {
         client.send(payload);
