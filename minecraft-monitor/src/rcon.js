@@ -7,6 +7,8 @@ class RconService {
     this.password = password;
     this.client = null;
     this.connecting = null;
+    this.cachedVersion = null;
+    this.versionFetchedAt = 0;
   }
 
   async connect() {
@@ -44,20 +46,39 @@ class RconService {
     return client.send(command);
   }
 
+  async getVersion() {
+    const now = Date.now();
+    if (this.cachedVersion && now - this.versionFetchedAt < 300_000) {
+      return this.cachedVersion;
+    }
+
+    try {
+      const output = await this.send('version');
+      this.cachedVersion = parseVersion(output);
+      this.versionFetchedAt = now;
+      return this.cachedVersion;
+    } catch {
+      return null;
+    }
+  }
+
   async getStatus() {
     try {
-      const [listOutput, tpsOutput] = await Promise.all([
+      const [listOutput, tpsOutput, version] = await Promise.all([
         this.send('list'),
         this.send('tps').catch(() => null),
+        this.getVersion(),
       ]);
 
       const players = parsePlayerList(listOutput);
-      const tps = tpsOutput ? parseTps(tpsOutput) : null;
+      const tpsData = tpsOutput ? parseTps(tpsOutput) : { tps: null, mspt: null };
 
       return {
         online: true,
         players,
-        tps,
+        tps: tpsData.tps,
+        mspt: tpsData.mspt,
+        version,
         raw: { list: listOutput, tps: tpsOutput },
       };
     } catch (err) {
@@ -66,6 +87,8 @@ class RconService {
         error: err.message,
         players: { count: 0, max: 0, names: [] },
         tps: null,
+        mspt: null,
+        version: this.cachedVersion,
       };
     }
   }
@@ -95,23 +118,43 @@ function parsePlayerList(output) {
   };
 }
 
+function parseVersion(output) {
+  const match = output.match(/This server is running (.+?) \(MC: ([\d.]+)\)/i)
+    || output.match(/version[:\s]+(.+)/i);
+  if (!match) return { raw: output.trim() };
+  return {
+    name: match[1]?.trim(),
+    minecraft: match[2]?.trim(),
+    raw: output.trim(),
+  };
+}
+
 function parseTps(output) {
   const lines = output.split('\n').filter(Boolean);
   const values = [];
+  let mspt = null;
 
   for (const line of lines) {
-    const match = line.match(/([\d.]+)\s*TPS/i) || line.match(/TPS from last [\d]+s: ([\d.]+)/i);
-    if (match) {
-      values.push(parseFloat(match[1]));
+    const tpsMatch = line.match(/([\d.]+)\s*TPS/i) || line.match(/TPS from last [\d]+s: ([\d.]+)/i);
+    if (tpsMatch) {
+      values.push(parseFloat(tpsMatch[1]));
+    }
+
+    const msptMatch = line.match(/([\d.]+)\s*mspt/i) || line.match(/MSPT[:\s]+([\d.]+)/i);
+    if (msptMatch) {
+      mspt = parseFloat(msptMatch[1]);
     }
   }
 
-  if (values.length === 0) {
+  let tps = null;
+  if (values.length > 0) {
+    tps = values[0];
+  } else {
     const simple = output.match(/([\d.]+)/);
-    return simple ? parseFloat(simple[1]) : null;
+    tps = simple ? parseFloat(simple[1]) : null;
   }
 
-  return values[0];
+  return { tps, mspt };
 }
 
 module.exports = { RconService };

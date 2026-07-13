@@ -1,0 +1,14 @@
+[
+  {
+    "id": "announce",
+    "label": "Restart Soon",
+    "command": "say Server restarting in 5 minutes!",
+    "icon": "📢"
+  },
+  {
+    "id": "backup-cmd",
+    "label": "Backup Hint",
+    "command": "say Manual backup recommended before major changes",
+    "icon": "💿"
+  }
+]

@@ -10,18 +10,37 @@
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-  <div class="app">
+  <div class="login-overlay hidden" id="loginOverlay">
+    <form class="login-card" id="loginForm">
+      <div class="login-logo">⛏</div>
+      <h2>Server Monitor</h2>
+      <p>Enter dashboard password to continue</p>
+      <input type="password" id="loginPassword" placeholder="Password" autocomplete="current-password" required>
+      <button type="submit" class="btn-primary">Sign In</button>
+      <p class="login-error hidden" id="loginError">Invalid password</p>
+    </form>
+  </div>
+
+  <div class="app hidden" id="app">
     <header class="header">
       <div class="header-left">
         <div class="logo">
           <span class="logo-icon">⛏</span>
-          <h1>Server Monitor</h1>
+          <div>
+            <h1>Server Monitor</h1>
+            <span class="server-version" id="serverVersion">—</span>
+          </div>
         </div>
         <div class="status-badge" id="statusBadge">
           <span class="status-dot"></span>
           <span id="statusText">Connecting…</span>
         </div>
       </div>
+
+      <div class="tps-chart-wrap">
+        <canvas id="tpsChart" width="200" height="40" title="TPS history (last ~10 min)"></canvas>
+      </div>
+
       <div class="header-stats">
         <div class="stat">
           <span class="stat-label">Players</span>
@@ -32,13 +51,25 @@
           <span class="stat-value" id="tpsValue">—</span>
         </div>
         <div class="stat">
-          <span class="stat-label">Log</span>
-          <span class="stat-value stat-value-sm" id="logPath">—</span>
+          <span class="stat-label">MSPT</span>
+          <span class="stat-value" id="msptValue">—</span>
+        </div>
+        <div class="stat">
+          <span class="stat-label">Peak</span>
+          <span class="stat-value" id="peakPlayers">—</span>
         </div>
       </div>
     </header>
 
     <aside class="sidebar">
+      <section class="panel">
+        <h2 class="panel-title">Broadcast</h2>
+        <form class="broadcast-form" id="broadcastForm">
+          <input type="text" id="broadcastInput" placeholder="Message to all players…" maxlength="256">
+          <button type="submit" class="btn-primary btn-sm">Say</button>
+        </form>
+      </section>
+
       <section class="panel">
         <h2 class="panel-title">Quick Commands</h2>
         <div class="quick-commands" id="quickCommands"></div>
@@ -51,9 +82,32 @@
         </ul>
       </section>
 
+      <section class="panel">
+        <div class="panel-header-row">
+          <h2 class="panel-title">Whitelist</h2>
+          <button class="btn-link" id="refreshWhitelist">Refresh</button>
+        </div>
+        <div class="whitelist-meta" id="whitelistMeta">—</div>
+        <ul class="player-list whitelist-list" id="whitelistList"></ul>
+      </section>
+
+      <section class="panel">
+        <h2 class="panel-title">Scheduled Restart</h2>
+        <div class="restart-controls">
+          <select id="restartDelay">
+            <option value="60">1 minute</option>
+            <option value="300" selected>5 minutes</option>
+            <option value="600">10 minutes</option>
+            <option value="900">15 minutes</option>
+          </select>
+          <button class="cmd-btn" id="scheduleRestart">⏱ Schedule</button>
+        </div>
+        <button class="cmd-btn cmd-btn-muted" id="cancelRestart" disabled>Cancel Restart</button>
+      </section>
+
       <section class="panel panel-danger">
         <h2 class="panel-title">Danger Zone</h2>
-        <button class="cmd-btn cmd-btn-danger" data-command="stop" data-confirm="Stop the server? This will disconnect all players.">
+        <button class="cmd-btn cmd-btn-danger" id="stopServerBtn">
           🛑 Stop Server
         </button>
       </section>
@@ -64,10 +118,19 @@
         <div class="terminal-header">
           <span class="terminal-title">📜 Server Logs</span>
           <div class="terminal-actions">
+            <input type="search" class="log-search" id="logSearch" placeholder="Filter logs…">
+            <div class="filter-group" id="logFilters">
+              <button class="filter-btn active" data-filter="all">All</button>
+              <button class="filter-btn" data-filter="info">Info</button>
+              <button class="filter-btn" data-filter="warn">Warn</button>
+              <button class="filter-btn" data-filter="error">Error</button>
+              <button class="filter-btn" data-filter="player">Players</button>
+            </div>
             <label class="toggle">
               <input type="checkbox" id="autoScroll" checked>
               Auto-scroll
             </label>
+            <button class="btn-icon" id="downloadLogs" title="Download log file">Download</button>
             <button class="btn-icon" id="clearLogs" title="Clear view">Clear</button>
             <button class="btn-icon" id="pauseLogs" title="Pause/resume">Pause</button>
           </div>
@@ -88,15 +151,19 @@
           <input
             type="text"
             id="rconInput"
-            placeholder="Enter Minecraft command…"
+            placeholder="Enter Minecraft command… (↑↓ history, Tab suggestions)"
             autocomplete="off"
             spellcheck="false"
+            list="commandSuggestions"
           >
+          <datalist id="commandSuggestions"></datalist>
           <button type="submit" class="btn-send">Send</button>
         </form>
       </section>
     </main>
   </div>
+
+  <div class="toast-container" id="toastContainer"></div>
 
   <script src="app.js"></script>
 </body>

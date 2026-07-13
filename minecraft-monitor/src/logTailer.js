@@ -2,6 +2,16 @@ const fs = require('fs');
 const path = require('path');
 const readline = require('readline');
 
+const JOIN_PATTERNS = [
+  /(\w[\w\d_]{2,16}) joined the game/i,
+  /(\w[\w\d_]{2,16}) logged in with entity id/i,
+];
+
+const LEAVE_PATTERNS = [
+  /(\w[\w\d_]{2,16}) left the game/i,
+  /(\w[\w\d_]{2,16}) lost connection:/i,
+];
+
 class LogTailer {
   constructor(logFilePath, { historyLines = 500 } = {}) {
     this.logFilePath = logFilePath;
@@ -98,6 +108,25 @@ class LogTailer {
         this.buffer = this.buffer.slice(-this.historyLines);
       }
       this.emit({ type: 'log', line });
+      this.detectPlayerEvent(line);
+    }
+  }
+
+  detectPlayerEvent(line) {
+    for (const pattern of JOIN_PATTERNS) {
+      const match = line.match(pattern);
+      if (match) {
+        this.emit({ type: 'player_event', event: 'join', player: match[1] });
+        return;
+      }
+    }
+
+    for (const pattern of LEAVE_PATTERNS) {
+      const match = line.match(pattern);
+      if (match) {
+        this.emit({ type: 'player_event', event: 'leave', player: match[1] });
+        return;
+      }
     }
   }
 

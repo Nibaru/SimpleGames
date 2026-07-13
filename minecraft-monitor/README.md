@@ -6,11 +6,31 @@ A web dashboard for monitoring **PaperMC** (and other Minecraft Java Edition) se
 
 ## Features
 
+### Monitoring
 - **Live log viewer** — tails `logs/latest.log` in real time via WebSocket
-- **RCON terminal** — send any server command and see the response
-- **Quick command buttons** — save world, change difficulty, set time/weather, reload configs, and more
-- **Server status** — online/offline indicator, player count, and TPS (PaperMC)
-- **Player list** — shows who is currently online
+- **Log filtering** — search text and filter by info / warn / error / player events
+- **Syntax highlighting** — parses Minecraft log timestamps and log levels
+- **Download logs** — grab the current log file from the dashboard
+- **Join/leave toasts** — notifications when players connect or disconnect
+
+### Server Control
+- **RCON terminal** — send any server command with command history (↑↓) and Tab suggestions
+- **Quick command buttons** — save world, difficulty, time/weather, TPS, GC, and more
+- **Custom commands** — add your own buttons via `quick-commands.json`
+- **Broadcast** — send a `say` message to all players
+- **Player actions** — message, kick, ban, or op players from the sidebar
+- **Scheduled restart** — countdown with in-game warnings, then `stop`
+- **Whitelist viewer** — reads `whitelist.json` from your server directory
+
+### Status & Metrics
+- **Live status** — online/offline, player count, TPS, MSPT
+- **TPS chart** — sparkline of recent performance
+- **Peak players** — session peak player count
+- **Server version** — PaperMC / Minecraft version via RCON
+- **Server properties** — MOTD, gamemode, difficulty from `server.properties`
+
+### Security
+- **Optional dashboard password** — session-based auth via `DASHBOARD_PASSWORD`
 
 ## Requirements
 
@@ -47,11 +67,20 @@ SERVER_DIR=/path/to/your/paper-server
 RCON_HOST=127.0.0.1
 RCON_PORT=25575
 RCON_PASSWORD=your-secure-password
+DASHBOARD_PASSWORD=your-dashboard-password   # optional but recommended
 ```
 
 If your log file is in a non-standard location, set `LOG_FILE` directly instead of `SERVER_DIR`.
 
-### 3. Install and run
+### 3. Custom quick commands (optional)
+
+```bash
+cp quick-commands.example.json quick-commands.json
+# Edit quick-commands.json, then set in .env:
+# QUICK_COMMANDS_FILE=./quick-commands.json
+```
+
+### 4. Install and run
 
 ```bash
 npm install
@@ -66,36 +95,36 @@ For development with auto-restart on file changes:
 npm run dev
 ```
 
-## Quick Commands
+## API Endpoints
 
-| Button | Command |
-|--------|---------|
-| List Players | `list` |
-| Save World | `save-all` |
-| Reload Whitelist | `whitelist reload` |
-| Reload Config | `reload confirm` |
-| Clear Weather | `weather clear` |
-| Set Day / Night | `time set day` / `time set night` |
-| Difficulty | `difficulty peaceful/easy/normal/hard` |
-| Check TPS | `tps` |
-| Stop Server | `stop` (requires confirmation) |
+| Method | Path | Description |
+|--------|------|-------------|
+| POST | `/api/login` | Authenticate (when `DASHBOARD_PASSWORD` is set) |
+| GET | `/api/config` | Dashboard configuration |
+| GET | `/api/status` | Server status, TPS, players, metrics |
+| GET | `/api/metrics` | TPS history and peak players |
+| POST | `/api/rcon` | Send an RCON command |
+| GET | `/api/logs/history` | Recent log lines |
+| GET | `/api/logs/download` | Download the log file |
+| GET | `/api/whitelist` | Whitelist player names |
+| WS | `/ws` | Live log stream and status updates |
 
 ## Architecture
 
 ```
 minecraft-monitor/
-├── server.js          # Express + WebSocket server
+├── server.js              # Express + WebSocket server
 ├── src/
-│   ├── rcon.js        # RCON client wrapper
-│   └── logTailer.js   # Log file tailing
+│   ├── auth.js            # Optional session auth
+│   ├── metrics.js         # TPS history store
+│   ├── quickCommands.js   # Default + custom commands
+│   ├── rcon.js            # RCON client wrapper
+│   └── logTailer.js       # Log file tailing + player events
 └── public/
     ├── index.html
     ├── styles.css
     └── app.js
 ```
-
-- **REST API**: `/api/status`, `/api/rcon`, `/api/config`, `/api/logs/history`
-- **WebSocket**: `/ws` — streams new log lines to connected clients
 
 ## Security Notes
 
@@ -103,6 +132,7 @@ This dashboard can stop your server and run arbitrary commands via RCON. **Do no
 
 Recommended:
 
+- Set `DASHBOARD_PASSWORD` in production
 - Bind to localhost only, or put behind a reverse proxy with auth
 - Use a strong RCON password
 - Run the monitor on the same trusted network as your server
