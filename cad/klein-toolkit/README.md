@@ -1,66 +1,51 @@
 # Klein 65200 Mini Ratchet Clip
 
-3D-printable snap cradle for the **Klein Tools 65200** slim-profile mini ratchet.
-Designed to drop into a larger toolkit (paired with the Klein 6-in-1 flip socket).
+Shape-accurate snap cradle for the **Klein Tools 65200** slim-profile mini ratchet.
+
+## What changed (fit fix)
+
+The first version used a wrong simplified block (rectangle head + symmetric hourglass + too-long envelope). This rebuild uses:
+
+- Official envelope **110 × 30 × 20 mm**
+- Your caliper span **66.51 mm** between shoulders
+- A **photo-traced top silhouette** from Klein’s front product shot, scaled to 110 mm
+- Circular head + tapered neck (narrow behind head, flares into ring) + finger-loop post
+- Two C-snaps on the true narrow neck (~9.1 mm wide)
 
 ## Files
 
 | File | Use |
 |------|-----|
-| `klein_65200_ratchet_clip.step` | **Import this into Fusion 360** (solid body, editable) |
-| `klein_65200_ratchet_clip.stl` | Slice directly for a test print |
-| `klein_65200_ratchet_clip.py` | Parametric source (build123d) — tweak dims and regenerate |
+| `klein_65200_ratchet_clip.step` | Import into Fusion 360 as a solid |
+| `klein_65200_ratchet_clip.stl` | Slice for a test print |
+| `klein_65200_ratchet_clip.py` | Parametric source — edit dims, regenerate |
+| `outline_preview.png` / `slice_preview.png` | Quick shape checks |
 
 ## Open in Fusion 360
 
-1. **Insert → Insert Mesh** is *not* what you want for the STEP.
-2. Use **File → Open** (or drag) `klein_65200_ratchet_clip.step`.
-3. Fusion creates a solid body. Convert to a component if you are assembling a full kit tray.
-4. To loosen/tighten fit: **Press Pull** the pocket faces, or edit parameters in the `.py` and re-export STEP.
-
-## What it does
-
-- **Head cradle** — nests the dual-drive ratchet head
-- **Hourglass handle pocket** — matches the tapered 66.51 mm shoulder-to-shoulder span from your caliper photo
-- **Two C-snap clips** — grab the narrow mid-handle from above
-- **Finger-loop post** — ring drops over a locating nub so the tool cannot slide lengthwise
-
-Insert from the top; pull straight up to remove.
-
-## Measured / assumed dimensions
-
-| Feature | Value | Source |
-|---------|-------|--------|
-| Handle span (head shoulder → ring shoulder) | **66.51 mm** | Your calipers |
-| Head length × width × thickness | 22 × 20 × 12 mm | Typical 65200 (verify) |
-| Handle mid width × thickness | 11 × 6.2 mm | Typical (verify) |
-| Ring OD / ID | 31 / 21 mm | Typical (verify) |
-| XY clearance | 0.45 mm/side | Starting fit |
-| Snap lip | 0.75 mm | Starting retention |
-
-### Measure these on your ratchet before a final print
-
-1. Handle **thickness** (flat-to-flat)
-2. Handle **width** at the narrow middle
-3. Head **thickness** and **width**
-4. Ring **outer diameter** and **inner diameter**
-
-Edit the constants at the top of `klein_65200_ratchet_clip.py`, then:
+1. Open / insert `klein_65200_ratchet_clip.step` (not the STL, if you want editable solids).
+2. Drop the ratchet into the pocket to check fit.
+3. If tight/loose: edit `XY_CLEAR`, `HANDLE_T`, or `HEAD_T` in the `.py` and re-run, **or** Press-Pull pocket faces in Fusion.
 
 ```bash
 pip install build123d
 python3 klein_65200_ratchet_clip.py
 ```
 
-## Print settings (starting point)
+## Still verify with calipers before a final print
 
-- Material: **PETG** preferred for living snaps (PLA works for a fit check)
-- Orientation: flat on the back (as modeled) — snap arms flex across layers
-- Walls: 3+ perimeters
-- Infill: 25–40%
-- If too tight: increase `XY_CLEAR` / `Z_CLEAR` by 0.1 mm and regenerate
-- If too loose: decrease clearance or increase `CLIP_LIP`
+| Measure | Used in model | Measure yours |
+|---------|---------------|---------------|
+| Overall length | 110 mm | |
+| Ring OD | 29.8 mm | |
+| Head OD | 20.4 mm | |
+| Neck width (narrowest) | ~9.1 mm | |
+| Handle thickness | 7.6 mm | |
+| Head / thumbwheel height | 16 mm pocket | |
 
-## Part size
+## Print
 
-Approx **125.5 × 39.9 × 17.1 mm**
+- PETG preferred for snaps
+- Print flat on the back
+- 3+ walls, ~30% infill
+- Insert from the top; pull up to remove
