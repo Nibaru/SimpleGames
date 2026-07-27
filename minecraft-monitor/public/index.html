@@ -1,0 +1,341 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Minecraft Server Monitor</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="login-overlay hidden" id="loginOverlay">
+    <form class="login-card" id="loginForm">
+      <div class="login-logo">⛏</div>
+      <h2>Server Monitor</h2>
+      <p>Enter dashboard password to continue</p>
+      <input type="password" id="loginPassword" placeholder="Password" autocomplete="current-password" required>
+      <button type="submit" class="btn-primary">Sign In</button>
+      <p class="login-error hidden" id="loginError">Invalid password</p>
+    </form>
+  </div>
+
+  <div class="app hidden" id="app">
+    <header class="topbar">
+      <div class="topbar-left">
+        <button class="icon-btn mobile-only" id="toggleSidebar" aria-label="Toggle sidebar">☰</button>
+        <div class="brand">
+          <div class="brand-icon">⛏</div>
+          <div>
+            <h1>Server Monitor</h1>
+            <p class="motd" id="serverMotd">Loading server…</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="health-wrap" title="Server health score">
+        <svg class="health-ring" viewBox="0 0 44 44">
+          <circle class="health-ring-bg" cx="22" cy="22" r="18"></circle>
+          <circle class="health-ring-fill" id="healthRing" cx="22" cy="22" r="18"></circle>
+        </svg>
+        <span class="health-value" id="healthValue">—</span>
+      </div>
+
+      <div class="tps-chart-wrap">
+        <div class="chart-label">TPS</div>
+        <canvas id="tpsChart" width="220" height="44"></canvas>
+      </div>
+
+      <div class="stat-grid">
+        <div class="stat-card">
+          <span class="stat-label">Players</span>
+          <span class="stat-value" id="playerCount">—</span>
+        </div>
+        <div class="stat-card">
+          <span class="stat-label">TPS</span>
+          <span class="stat-value" id="tpsValue">—</span>
+        </div>
+        <div class="stat-card">
+          <span class="stat-label">MSPT</span>
+          <span class="stat-value" id="msptValue">—</span>
+        </div>
+        <div class="stat-card">
+          <span class="stat-label">Uptime</span>
+          <span class="stat-value stat-value-sm" id="uptimeValue">—</span>
+        </div>
+      </div>
+
+      <div class="topbar-actions">
+        <div class="conn-pills">
+          <span class="pill" id="bridgePill" title="MonitorBridge plugin">Bridge</span>
+          <span class="pill" id="wsPill" title="Log stream">Logs</span>
+          <span class="pill" id="rconPill" title="RCON connection">RCON</span>
+        </div>
+        <button class="icon-btn" id="themeToggle" title="Toggle theme">🌙</button>
+        <button class="icon-btn" id="settingsBtn" title="Settings">⚙</button>
+        <button class="icon-btn" id="shortcutsBtn" title="Keyboard shortcuts">?</button>
+      </div>
+    </header>
+
+    <div class="layout">
+      <nav class="nav-rail" id="navRail">
+        <button class="nav-btn active" data-panel="overview" title="Overview">🏠</button>
+        <button class="nav-btn" data-panel="players" title="Players">👥</button>
+        <button class="nav-btn" data-panel="commands" title="Commands">⚡</button>
+        <button class="nav-btn" data-panel="server" title="Server">🖥</button>
+        <button class="nav-btn" data-panel="content" title="Plugins & Datapacks">📦</button>
+      </nav>
+
+      <aside class="side-panel" id="sidePanel">
+        <div class="panel-view active" data-view="overview">
+          <section class="panel">
+            <h2 class="panel-title">Broadcast</h2>
+            <form class="broadcast-form" id="broadcastForm">
+              <textarea id="broadcastInput" rows="2" placeholder="Message to all players…" maxlength="256"></textarea>
+              <div class="row-actions">
+                <button type="button" class="cmd-btn btn-block" id="titleBroadcast">Title</button>
+                <button type="submit" class="btn-primary btn-sm">Say</button>
+              </div>
+            </form>
+          </section>
+          <section class="panel">
+            <h2 class="panel-title">Server Info</h2>
+            <dl class="info-list" id="serverInfo">
+              <div><dt>Version</dt><dd id="infoVersion">—</dd></div>
+              <div><dt>Difficulty</dt><dd id="infoDifficulty">—</dd></div>
+              <div><dt>Gamemode</dt><dd id="infoGamemode">—</dd></div>
+              <div><dt>Peak Today</dt><dd id="peakPlayers">—</dd></div>
+            </dl>
+          </section>
+          <section class="panel">
+            <h2 class="panel-title">Scheduled Restart</h2>
+            <div class="restart-controls">
+              <select id="restartDelay">
+                <option value="60">1 minute</option>
+                <option value="300" selected>5 minutes</option>
+                <option value="600">10 minutes</option>
+                <option value="900">15 minutes</option>
+              </select>
+              <button class="cmd-btn" id="scheduleRestart">⏱ Schedule</button>
+            </div>
+            <button class="cmd-btn cmd-btn-muted btn-block" id="cancelRestart" disabled>Cancel Restart</button>
+          </section>
+        </div>
+
+        <div class="panel-view" data-view="players">
+          <section class="panel">
+            <div class="panel-header-row">
+              <h2 class="panel-title">Online</h2>
+              <span class="badge" id="onlineBadge">0</span>
+            </div>
+            <ul class="player-list" id="playerList">
+              <li class="player-empty">No players online</li>
+            </ul>
+          </section>
+          <section class="panel">
+            <div class="panel-header-row">
+              <h2 class="panel-title">Whitelist</h2>
+              <button class="btn-link" id="refreshWhitelist">Refresh</button>
+            </div>
+            <div class="whitelist-meta" id="whitelistMeta">—</div>
+            <ul class="player-list compact-list" id="whitelistList"></ul>
+          </section>
+          <section class="panel">
+            <div class="panel-header-row">
+              <h2 class="panel-title">Operators</h2>
+              <button class="btn-link" id="refreshOps">Refresh</button>
+            </div>
+            <ul class="player-list compact-list" id="opsList"></ul>
+          </section>
+          <section class="panel">
+            <div class="panel-header-row">
+              <h2 class="panel-title">Banned</h2>
+              <button class="btn-link" id="refreshBanned">Refresh</button>
+            </div>
+            <ul class="player-list compact-list" id="bannedList"></ul>
+          </section>
+        </div>
+
+        <div class="panel-view" data-view="commands">
+          <section class="panel">
+            <h2 class="panel-title">Quick Commands</h2>
+            <input type="search" class="cmd-search" id="cmdSearch" placeholder="Search commands…">
+            <div class="quick-commands" id="quickCommands"></div>
+          </section>
+          <section class="panel">
+            <h2 class="panel-title">Favorites</h2>
+            <div class="quick-commands" id="favoriteCommands"></div>
+            <p class="hint">Star a command to pin it here</p>
+          </section>
+        </div>
+
+        <div class="panel-view" data-view="server">
+          <section class="panel panel-danger">
+            <h2 class="panel-title">Danger Zone</h2>
+            <button class="cmd-btn cmd-btn-danger btn-block" id="stopServerBtn">🛑 Stop Server</button>
+          </section>
+        </div>
+
+        <div class="panel-view" data-view="content">
+          <section class="panel content-panel">
+            <div class="content-tabs">
+              <button class="content-tab active" data-content-tab="plugins">🔌 Plugins</button>
+              <button class="content-tab" data-content-tab="datapacks">📦 Datapacks</button>
+            </div>
+
+            <div class="content-view active" data-content-view="plugins">
+              <div class="panel-header-row">
+                <div>
+                  <h2 class="panel-title">Plugins</h2>
+                  <p class="content-meta" id="pluginsMeta">—</p>
+                </div>
+                <button class="btn-link" id="refreshPlugins">Refresh</button>
+              </div>
+              <input type="search" class="cmd-search" id="pluginSearch" placeholder="Search plugins…">
+              <div class="content-list" id="pluginList"></div>
+            </div>
+
+            <div class="content-view" data-content-view="datapacks">
+              <div class="panel-header-row">
+                <div>
+                  <h2 class="panel-title">Datapacks</h2>
+                  <p class="content-meta" id="datapacksMeta">—</p>
+                </div>
+                <button class="btn-link" id="refreshDatapacks">Refresh</button>
+              </div>
+              <input type="search" class="cmd-search" id="datapackSearch" placeholder="Search datapacks…">
+              <div class="content-actions">
+                <button class="cmd-btn btn-block" id="reloadDatapacks">🔄 Reload data</button>
+                <button class="cmd-btn btn-block" id="listDatapacksRcon">📋 List loaded</button>
+              </div>
+              <div class="content-list" id="datapackList"></div>
+            </div>
+          </section>
+        </div>
+      </aside>
+
+      <main class="workspace">
+        <div class="workspace-tabs">
+          <button class="tab active" data-tab="logs">Logs</button>
+          <button class="tab" data-tab="console">Console</button>
+          <button class="tab" data-tab="split">Split</button>
+          <div class="workspace-tabs-spacer"></div>
+          <button class="icon-btn sm" id="fullscreenLogs" title="Fullscreen logs">⛶</button>
+        </div>
+
+        <div class="pane-container split-mode" id="paneContainer">
+          <section class="terminal-panel log-pane" id="logPane">
+            <div class="terminal-header">
+              <span class="terminal-title">📜 Server Logs</span>
+              <div class="terminal-actions">
+                <input type="search" class="log-search" id="logSearch" placeholder="Filter…  (/ focus)">
+                <div class="filter-group" id="logFilters">
+                  <button class="filter-btn active" data-filter="all">All</button>
+                  <button class="filter-btn" data-filter="info">Info</button>
+                  <button class="filter-btn" data-filter="warn">Warn</button>
+                  <button class="filter-btn" data-filter="error">Error</button>
+                  <button class="filter-btn" data-filter="player">Players</button>
+              <button class="filter-btn" data-filter="chat">Chat</button>
+                </div>
+                <label class="toggle"><input type="checkbox" id="autoScroll" checked> Auto</label>
+                <button class="btn-icon" id="downloadLogs">↓</button>
+                <button class="btn-icon" id="clearLogs">Clear</button>
+                <button class="btn-icon" id="pauseLogs">Pause</button>
+              </div>
+            </div>
+            <div class="terminal-body" id="logOutput"></div>
+            <div class="log-stats" id="logStats">0 lines</div>
+          </section>
+
+          <div class="splitter" id="splitter" title="Drag to resize"></div>
+
+          <section class="terminal-panel console-pane" id="consolePane">
+            <div class="terminal-header">
+              <span class="terminal-title">⌨ RCON Console</span>
+              <div class="terminal-actions">
+                <button class="btn-icon" id="openPalette" title="Command palette (Ctrl+K)">⌘K</button>
+                <button class="btn-icon" id="clearRcon">Clear</button>
+              </div>
+            </div>
+            <div class="terminal-body rcon-output" id="rconOutput"></div>
+            <form class="rcon-input-row" id="rconForm">
+              <span class="prompt">&gt;</span>
+              <input type="text" id="rconInput" placeholder="Command…  Ctrl+K palette, ↑↓ history" autocomplete="off" spellcheck="false" list="commandSuggestions">
+              <datalist id="commandSuggestions"></datalist>
+              <button type="submit" class="btn-send">Send</button>
+            </form>
+          </section>
+        </div>
+      </main>
+    </div>
+
+    <div class="status-badge floating-status" id="statusBadge">
+      <span class="status-dot"></span>
+      <span id="statusText">Connecting…</span>
+    </div>
+  </div>
+
+  <!-- Command Palette -->
+  <div class="modal hidden" id="commandPalette">
+    <div class="modal-backdrop" data-close></div>
+    <div class="modal-card palette-card">
+      <input type="search" id="paletteInput" placeholder="Type a command or search actions…" autocomplete="off">
+      <ul class="palette-results" id="paletteResults"></ul>
+      <p class="palette-hint">↑↓ navigate · Enter run · Esc close</p>
+    </div>
+  </div>
+
+  <!-- Settings -->
+  <div class="modal hidden" id="settingsModal">
+    <div class="modal-backdrop" data-close></div>
+    <div class="modal-card">
+      <h3>Settings</h3>
+      <label class="setting-row">
+        <span>Log font size</span>
+        <input type="range" id="logFontSize" min="11" max="16" value="13">
+      </label>
+      <label class="setting-row">
+        <span>Console font size</span>
+        <input type="range" id="consoleFontSize" min="11" max="16" value="13">
+      </label>
+      <label class="setting-row toggle-row">
+        <span>Join/leave sounds</span>
+        <input type="checkbox" id="soundEnabled">
+      </label>
+      <label class="setting-row toggle-row">
+        <span>Compact sidebar</span>
+        <input type="checkbox" id="compactSidebar">
+      </label>
+      <label class="setting-row">
+        <span>Theme</span>
+        <select id="themeSelect">
+          <option value="dark">Dark</option>
+          <option value="light">Light</option>
+          <option value="minecraft">Minecraft</option>
+        </select>
+      </label>
+    </div>
+  </div>
+
+  <!-- Shortcuts -->
+  <div class="modal hidden" id="shortcutsModal">
+    <div class="modal-backdrop" data-close></div>
+    <div class="modal-card">
+      <h3>Keyboard Shortcuts</h3>
+      <dl class="shortcut-list">
+        <div><dt>Ctrl+K</dt><dd>Command palette</dd></div>
+        <div><dt>/</dt><dd>Focus log filter</dd></div>
+        <div><dt>`</dt><dd>Focus console input</dd></div>
+        <div><dt>↑ / ↓</dt><dd>Command history</dd></div>
+        <div><dt>?</dt><dd>This help dialog</dd></div>
+        <div><dt>Esc</dt><dd>Close dialogs</dd></div>
+      </dl>
+    </div>
+  </div>
+
+  <div class="toast-container" id="toastContainer"></div>
+
+  <script src="app.js"></script>
+</body>
+</html>

@@ -1,0 +1,7 @@
+name: Schellmonitor
+version: ${project.version}
+main: games.twinhead.monitorbridge.MonitorBridgePlugin
+api-version: '1.21'
+authors: [Twinhead]
+description: All-in-one web dashboard + live server monitor (single JAR)
+website: https://github.com/Nibaru/SimpleGames

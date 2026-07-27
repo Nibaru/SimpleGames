@@ -1,0 +1,19 @@
+# Schellmonitor — all-in-one dashboard plugin
+# Build: mvn package  →  copies Schellmonitor-1.0.0.jar to M:/AlgomaClusterServer/plugins
+# Open: http://127.0.0.1:8765
+
+http:
+  enabled: true
+  host: 127.0.0.1
+  port: 8765
+  api-key: change-me-to-a-secret-key
+
+dashboard:
+  # Optional extra password for the web UI (in addition to api-key)
+  password: ""
+
+events:
+  buffer-size: 2000
+  log-chat: true
+  log-commands: true
+  log-deaths: true
